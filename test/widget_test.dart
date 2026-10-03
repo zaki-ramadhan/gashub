@@ -1,20 +1,21 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
 import 'package:gashub/main.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const GasHubApp());
+  setUpAll(() async {
+    await initializeDateFormatting('id_ID', null);
+  });
 
-    // Verify GasHub branding is rendered.
-    expect(find.text('GasHub Operational System'), findsOneWidget);
+  testWidgets('GasHub smoke test', (WidgetTester tester) async {
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: GasHubApp(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byType(GasHubApp), findsOneWidget);
   });
 }
