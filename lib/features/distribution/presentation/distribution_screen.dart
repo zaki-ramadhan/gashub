@@ -184,14 +184,21 @@ class _DistributionScreenState extends State<DistributionScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _activeFilter = 'Semua';
   String _searchQuery = '';
-  late final PagedListController<Map<String, dynamic>> _paginationController;
+  final PagedListController<Map<String, dynamic>> _paginationController =
+      PagedListController<Map<String, dynamic>>(
+    pageSize: 4,
+  );
+  bool _isLoading = false;
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   void initState() {
     super.initState();
-    _paginationController = PagedListController<Map<String, dynamic>>(
-      pageSize: 4,
-    );
     _paginationController.addListener(_onPaginationUpdated);
     _syncFilteredData();
   }
@@ -300,8 +307,11 @@ class _DistributionScreenState extends State<DistributionScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.brandPrimary,
+        child: Column(
+          children: [
           // 1. Rekapitulasi Distribusi Hari Ini
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -310,14 +320,16 @@ class _DistributionScreenState extends State<DistributionScreen> {
               AppDimensions.space16,
               AppDimensions.space10,
             ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppDimensions.space12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.border),
-              ),
+            child: AppSkeletonizer(
+              isLoading: _isLoading,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppDimensions.space12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                  border: Border.all(color: AppColors.border),
+                ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -441,6 +453,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
               ),
             ),
           ),
+        ),
 
           // 2. Filter Bar & Search
           Padding(
@@ -501,7 +514,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
 
           // Daftar Transaksi Terkelompok Berdasarkan Tanggal (Chunk Paginated)
           Expanded(
-            child: _paginationController.totalCount == 0
+            child: _paginationController.totalCount == 0 && !_isLoading
                 ? const Padding(
                     padding: EdgeInsets.all(AppDimensions.space24),
                     child: Center(
@@ -512,94 +525,100 @@ class _DistributionScreenState extends State<DistributionScreen> {
                       ),
                     ),
                   )
-                : InfiniteScrollListener(
-                    onLoadMore: _paginationController.loadMore,
-                    isLoadingMore: _paginationController.isLoadingMore,
-                    hasMore: _paginationController.hasMore,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(
-                        left: AppDimensions.space16,
-                        right: AppDimensions.space16,
-                        top: AppDimensions.space4,
-                        bottom: 96,
-                      ),
-                      itemCount: sortedDates.length + 1,
-                      itemBuilder: (context, index) {
-                        if (index == sortedDates.length) {
-                          return PaginationLoadingIndicator(
-                            isLoadingMore: _paginationController.isLoadingMore,
-                            hasMore: _paginationController.hasMore,
-                            totalItems: _paginationController.totalCount,
-                            loadingMessage: 'Memuat data distribusi lainnya...',
-                            endMessage: 'Semua data distribusi telah ditampilkan',
-                          );
-                        }
-                        final dateKey = sortedDates[index];
-                        final itemsForDay = grouped[dateKey]!;
-                        final dayQty = itemsForDay.fold<int>(
-                            0, (sum, tx) => sum + (tx['qty'] as int? ?? 0));
-                        final dayAmount = itemsForDay.fold<int>(
-                            0, (sum, tx) => sum + (tx['amount'] as int? ?? 0));
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: EdgeInsets.only(
-                              top: index == 0
-                                  ? AppDimensions.space4
-                                  : AppDimensions.space16,
-                              bottom: AppDimensions.space8,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  _formatDateHeader(dateKey),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                                Text(
-                                  '$dayQty tabung | ${AppFormatters.currency(dayAmount)}',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          ...itemsForDay.map((item) {
-                            return Padding(
-                              padding: const EdgeInsets.only(
-                                  bottom: AppDimensions.space8),
-                              child: FlatTransactionRow(
-                                title: item['title'] as String,
-                                subtitle: item['items'] as String,
-                                amount: AppFormatters.currency(
-                                    item['amount'] as int),
-                                statusLabel: item['statusLabel'] as String,
-                                statusType: item['statusType'] as BadgeType,
-                                time: item['time'] as String?,
-                                icon: Icons.person_outline,
-                                iconColor: item['iconColor'] as Color?,
-                                iconBg: item['iconBg'] as Color?,
-                              ),
+                : AppSkeletonizer(
+                    isLoading: _isLoading,
+                    child: InfiniteScrollListener(
+                      onLoadMore: _paginationController.loadMore,
+                      isLoadingMore: _paginationController.isLoadingMore,
+                      hasMore: _paginationController.hasMore,
+                      child: ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.only(
+                          left: AppDimensions.space16,
+                          right: AppDimensions.space16,
+                          top: AppDimensions.space4,
+                          bottom: 96,
+                        ),
+                        itemCount: sortedDates.length + 1,
+                        itemBuilder: (context, index) {
+                          if (index == sortedDates.length) {
+                            if (_isLoading) return const SizedBox.shrink();
+                            return PaginationLoadingIndicator(
+                              isLoadingMore: _paginationController.isLoadingMore,
+                              hasMore: _paginationController.hasMore,
+                              totalItems: _paginationController.totalCount,
+                              loadingMessage: 'Memuat data distribusi lainnya...',
+                              endMessage: 'Semua data distribusi telah ditampilkan',
                             );
-                          }),
-                        ],
-                      );
-                    },
+                          }
+                          final dateKey = sortedDates[index];
+                          final itemsForDay = grouped[dateKey]!;
+                          final dayQty = itemsForDay.fold<int>(
+                              0, (sum, tx) => sum + (tx['qty'] as int? ?? 0));
+                          final dayAmount = itemsForDay.fold<int>(
+                              0, (sum, tx) => sum + (tx['amount'] as int? ?? 0));
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  top: index == 0
+                                      ? AppDimensions.space4
+                                      : AppDimensions.space16,
+                                  bottom: AppDimensions.space8,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      _formatDateHeader(dateKey),
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    Text(
+                                      '$dayQty tabung | ${AppFormatters.currency(dayAmount)}',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              ...itemsForDay.map((item) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                      bottom: AppDimensions.space8),
+                                  child: FlatTransactionRow(
+                                    title: item['title'] as String,
+                                    subtitle: item['items'] as String,
+                                    amount: AppFormatters.currency(
+                                        item['amount'] as int),
+                                    statusLabel: item['statusLabel'] as String,
+                                    statusType: item['statusType'] as BadgeType,
+                                    time: item['time'] as String?,
+                                    icon: Icons.person_outline,
+                                    iconColor: item['iconColor'] as Color?,
+                                    iconBg: item['iconBg'] as Color?,
+                                  ),
+                                );
+                              }),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildFilterChip(String label) {

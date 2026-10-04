@@ -129,15 +129,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
     },
   ];
 
-  late final PagedListController<Map<String, dynamic>> _paginationController;
+  final PagedListController<Map<String, dynamic>> _paginationController =
+      PagedListController<Map<String, dynamic>>(
+    pageSize: 4,
+    initialItems: _stockLogs,
+  );
+  bool _isLoading = false;
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   void initState() {
     super.initState();
-    _paginationController = PagedListController<Map<String, dynamic>>(
-      pageSize: 4,
-      initialItems: _stockLogs,
-    );
     _paginationController.addListener(_onPaginationUpdated);
   }
 
@@ -189,22 +196,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      body: InfiniteScrollListener(
-        onLoadMore: _paginationController.loadMore,
-        isLoadingMore: _paginationController.isLoadingMore,
-        hasMore: _paginationController.hasMore,
-        child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppDimensions.space16,
-          AppDimensions.space8,
-          AppDimensions.space16,
-          96,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Ringkasan Fisik Stok 3kg
-            _buildStockHeroCard(context),
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.brandPrimary,
+        child: InfiniteScrollListener(
+          onLoadMore: _paginationController.loadMore,
+          isLoadingMore: _paginationController.isLoadingMore,
+          hasMore: _paginationController.hasMore,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.space16,
+              AppDimensions.space8,
+              AppDimensions.space16,
+              96,
+            ),
+            child: AppSkeletonizer(
+              isLoading: _isLoading,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Ringkasan Fisik Stok 3kg
+                  _buildStockHeroCard(context),
             const SizedBox(height: AppDimensions.space20),
 
             // 2. Riwayat Keluar Masuk Tabung Terkelompok Tanggal
@@ -292,19 +305,22 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               );
             }),
-            PaginationLoadingIndicator(
-              isLoadingMore: _paginationController.isLoadingMore,
-              hasMore: _paginationController.hasMore,
-              totalItems: _paginationController.totalCount,
-              loadingMessage: 'Memuat catatan pasokan lainnya...',
-              endMessage: 'Semua catatan pasokan telah ditampilkan',
-            ),
+            if (!_isLoading)
+              PaginationLoadingIndicator(
+                isLoadingMore: _paginationController.isLoadingMore,
+                hasMore: _paginationController.hasMore,
+                totalItems: _paginationController.totalCount,
+                loadingMessage: 'Memuat catatan pasokan lainnya...',
+                endMessage: 'Semua catatan pasokan telah ditampilkan',
+              ),
             const SizedBox(height: 96),
           ],
         ),
       ),
     ),
-  );
+  ),
+),
+);
   }
 
   Widget _buildStockHeroCard(BuildContext context) {
@@ -348,16 +364,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
                           ),
                         ),
                         const SizedBox(width: AppDimensions.space8),
-                        InkWell(
-                          onTap: () => PriceSettingSheet.show(context),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 2),
-                            child: Text(
-                              'Ubah',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.brandPrimary,
+                        Skeleton.ignore(
+                          child: InkWell(
+                            onTap: () => PriceSettingSheet.show(context),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 2),
+                              child: Text(
+                                'Ubah',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.brandPrimary,
+                                ),
                               ),
                             ),
                           ),

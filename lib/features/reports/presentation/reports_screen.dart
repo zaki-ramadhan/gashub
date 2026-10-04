@@ -33,6 +33,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   // Active period summary data
   late ReportPeriodSummary _activeSummary;
+  bool _isLoading = false;
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   void initState() {
@@ -54,8 +61,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_selectedTabIndex != newTab && mounted) {
       setState(() {
         _selectedTabIndex = newTab;
+        _isLoading = true;
         final options = ReportsData.getOptionsForTab(_selectedTabIndex);
         _activeSummary = options.first;
+      });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (mounted) setState(() => _isLoading = false);
       });
     }
   }
@@ -77,8 +88,12 @@ class _ReportsScreenState extends State<ReportsScreen> {
     ReportsScreen.activeTabNotifier.value = index;
     setState(() {
       _selectedTabIndex = index;
+      _isLoading = true;
       final options = ReportsData.getOptionsForTab(index);
       _activeSummary = options.first;
+    });
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _isLoading = false);
     });
   }
 
@@ -95,8 +110,14 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
           return InkWell(
             onTap: () {
-              setState(() => _activeSummary = summary);
+              setState(() {
+                _activeSummary = summary;
+                _isLoading = true;
+              });
               Navigator.of(context, rootNavigator: true).pop();
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (mounted) setState(() => _isLoading = false);
+              });
             },
             child: Container(
               padding: const EdgeInsets.symmetric(
@@ -165,196 +186,212 @@ class _ReportsScreenState extends State<ReportsScreen> {
       appBar: AppBar(
         title: const Text('Laporan & Statistik'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(
-          AppDimensions.space16,
-          AppDimensions.space8,
-          AppDimensions.space16,
-          96,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 1. Top Segmented Period Tabs (Mingguan | Bulanan | Tahunan | Semua)
-            Container(
-              height: 42,
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-              ),
-              child: Row(
-                children: [
-                  _buildSegmentTab('Mingguan', 0),
-                  _buildSegmentTab('Bulanan', 1),
-                  _buildSegmentTab('Tahunan', 2),
-                  _buildSegmentTab('Semua', 3),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppDimensions.space16),
-
-            // 2. Interactive Period Sub-header (only for Mingguan, Bulanan, Tahunan)
-            if (_selectedTabIndex != 3) ...[
-              InkWell(
-                onTap: () => _showPeriodPickerSheet(context),
-                borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                    border: Border.all(color: AppColors.border, width: 1.0),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 16,
-                        color: AppColors.brandPrimary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        current.title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '|',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.border,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          current.dateRangeLabel,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textMuted,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const Icon(
-                        Icons.keyboard_arrow_down,
-                        size: 18,
-                        color: AppColors.textPrimary,
-                      ),
-                    ],
-                  ),
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.brandPrimary,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(
+            AppDimensions.space16,
+            AppDimensions.space8,
+            AppDimensions.space16,
+            96,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Top Segmented Period Tabs (Mingguan | Bulanan | Tahunan | Semua)
+              Container(
+                height: 42,
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+                ),
+                child: Row(
+                  children: [
+                    _buildSegmentTab('Mingguan', 0),
+                    _buildSegmentTab('Bulanan', 1),
+                    _buildSegmentTab('Tahunan', 2),
+                    _buildSegmentTab('Semua', 3),
+                  ],
                 ),
               ),
               const SizedBox(height: AppDimensions.space16),
-            ],
 
-            // Ringkasan Usaha (4 Kartu Praktis Tanpa Rumit)
-            const Text(
-              'Ringkasan Usaha',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: AppDimensions.space10),
-
-            Row(
-              children: [
-                // Card 1: Untung Bersih
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'Untung Bersih',
-                    value: current.shortNetProfit,
-                    valueColor: AppColors.brandPrimary,
-                    subWidget: const Text(
-                      'Sisa uang di tangan',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              // 2. Interactive Period Sub-header (only for Mingguan, Bulanan, Tahunan)
+              if (_selectedTabIndex != 3) ...[
+                InkWell(
+                  onTap: () => _showPeriodPickerSheet(context),
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+                      border: Border.all(color: AppColors.border, width: 1.0),
                     ),
-                  ),
-                ),
-                const SizedBox(width: AppDimensions.space8),
-
-                // Card 2: Tabung Terjual
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'Tabung Terjual',
-                    value: '${AppFormatters.number(current.totalSoldQty)} tabung',
-                    subWidget: const Text(
-                      'Terkirim ke pelanggan',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppDimensions.space8),
-
-            Row(
-              children: [
-                // Card 3: Total Penjualan
-                Expanded(
-                  child: _buildMetricCard(
-                    title: 'Total Penjualan',
-                    value: current.shortOmset,
-                    subWidget: Text(
-                      current.shortCashIn,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppDimensions.space8),
-
-                // Card 4: Sisa Piutang Warung
-                Expanded(
-                  child: InkWell(
-                    onTap: () => context.push('/piutang'),
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                    child: _buildMetricCard(
-                      title: 'Utang Pelanggan',
-                      value: current.shortReceivable,
-                      subWidget: const Text(
-                        'Belum dibayar pelanggan',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.warningText,
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.calendar_today_outlined,
+                          size: 16,
+                          color: AppColors.brandPrimary,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        const SizedBox(width: 8),
+                        Text(
+                          current.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          '|',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.border,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            current.dateRangeLabel,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 18,
+                          color: AppColors.textPrimary,
+                        ),
+                      ],
                     ),
                   ),
                 ),
+                const SizedBox(height: AppDimensions.space16),
               ],
-            ),
-            const SizedBox(height: AppDimensions.space20),
 
-            // 6. Rincian Keuangan (Auditable Breakdown)
-            _buildFinancialBreakdownCard(context, current),
-            const SizedBox(height: 96),
-          ],
+              // Dynamic Report Content Wrapped in AppSkeletonizer
+              AppSkeletonizer(
+                isLoading: _isLoading,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Ringkasan Usaha (4 Kartu Praktis Tanpa Rumit)
+                    const Text(
+                      'Ringkasan Usaha',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: AppDimensions.space10),
+
+                    Row(
+                      children: [
+                        // Card 1: Untung Bersih
+                        Expanded(
+                          child: _buildMetricCard(
+                            title: 'Untung Bersih',
+                            value: current.shortNetProfit,
+                            valueColor: AppColors.brandPrimary,
+                            subWidget: const Text(
+                              'Sisa uang di tangan',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppDimensions.space8),
+
+                        // Card 2: Tabung Terjual
+                        Expanded(
+                          child: _buildMetricCard(
+                            title: 'Tabung Terjual',
+                            value: '${AppFormatters.number(current.totalSoldQty)} tabung',
+                            subWidget: const Text(
+                              'Terkirim ke pelanggan',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppDimensions.space8),
+
+                    Row(
+                      children: [
+                        // Card 3: Total Penjualan
+                        Expanded(
+                          child: _buildMetricCard(
+                            title: 'Total Penjualan',
+                            value: current.shortOmset,
+                            subWidget: Text(
+                              current.shortCashIn,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: AppDimensions.space8),
+
+                        // Card 4: Sisa Piutang Warung
+                        Expanded(
+                          child: Skeleton.ignore(
+                            child: InkWell(
+                              onTap: () => context.push('/piutang'),
+                              borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                              child: _buildMetricCard(
+                                title: 'Utang Pelanggan',
+                                value: current.shortReceivable,
+                                subWidget: const Text(
+                                  'Belum dibayar pelanggan',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.warningText,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppDimensions.space20),
+
+                    // 6. Rincian Keuangan (Auditable Breakdown)
+                    _buildFinancialBreakdownCard(context, current),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 96),
+            ],
+          ),
         ),
       ),
     );

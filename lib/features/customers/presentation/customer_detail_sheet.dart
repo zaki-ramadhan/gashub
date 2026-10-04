@@ -26,6 +26,7 @@ class CustomerDetailSheet extends StatefulWidget {
 class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
   late CustomerModel _customer;
   late final PagedListController<CustomerTransaction> _paginationController;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -49,19 +50,24 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
     super.dispose();
   }
 
-  void _handlePayDebt() {
+  Future<void> _handlePayDebt() async {
     final debt = _customer.activeDebt;
     if (debt <= 0) return;
 
+    setState(() => _isLoading = true);
     CustomersRepository.instance.payDebt(_customer.id, debt);
-    setState(() {
-      _customer = _customer.copyWith(activeDebt: 0);
-      _paginationController.setSource(_customer.transactions);
-    });
-    AppToast.success(
-      title: 'Pelunasan berhasil dicatat',
-      description: 'Utang ${_customer.name} kini lunas',
-    );
+    await Future.delayed(const Duration(milliseconds: 350));
+    if (mounted) {
+      setState(() {
+        _customer = _customer.copyWith(activeDebt: 0);
+        _paginationController.setSource(_customer.transactions);
+        _isLoading = false;
+      });
+      AppToast.success(
+        title: 'Pelunasan berhasil dicatat',
+        description: 'Utang ${_customer.name} kini lunas',
+      );
+    }
   }
 
   void _handleCallWA() {
@@ -79,10 +85,12 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
       hasMore: _paginationController.hasMore,
       child: AppBottomSheet(
         title: _customer.name,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          // 1. Info Kontak & Alamat
+        child: AppSkeletonizer(
+          isLoading: _isLoading,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            // 1. Info Kontak & Alamat
           Container(
             padding: const EdgeInsets.symmetric(
               horizontal: AppDimensions.space12,
@@ -145,29 +153,31 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                       ),
                     ),
                     const Spacer(),
-                    InkWell(
-                      onTap: _handleCallWA,
-                      borderRadius: BorderRadius.circular(6),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.brandPrimary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.chat_outlined, size: 13, color: Colors.white),
-                            SizedBox(width: 4),
-                            Text(
-                              'WhatsApp',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: Colors.white,
+                    Skeleton.ignore(
+                      child: InkWell(
+                        onTap: _handleCallWA,
+                        borderRadius: BorderRadius.circular(6),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.brandPrimary,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.chat_outlined, size: 13, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text(
+                                'WhatsApp',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -220,21 +230,23 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                       ),
                       if (_customer.hasDebt) ...[
                         const SizedBox(height: 6),
-                        InkWell(
-                          onTap: _handlePayDebt,
-                          child: Container(
-                            alignment: Alignment.center,
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            decoration: BoxDecoration(
-                              color: AppColors.successBg,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: const Text(
-                              'Bayar Lunas',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.successText,
+                        Skeleton.ignore(
+                          child: InkWell(
+                            onTap: _handlePayDebt,
+                            child: Container(
+                              alignment: Alignment.center,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.successBg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'Bayar Lunas',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.successText,
+                                ),
                               ),
                             ),
                           ),
@@ -374,17 +386,19 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                 ),
               );
             }),
-            PaginationLoadingIndicator(
-              isLoadingMore: _paginationController.isLoadingMore,
-              hasMore: _paginationController.hasMore,
-              totalItems: _paginationController.totalCount,
-              loadingMessage: 'Memuat riwayat pengiriman...',
-              endMessage: 'Semua riwayat telah ditampilkan',
-            ),
+            if (!_isLoading)
+              PaginationLoadingIndicator(
+                isLoadingMore: _paginationController.isLoadingMore,
+                hasMore: _paginationController.hasMore,
+                totalItems: _paginationController.totalCount,
+                loadingMessage: 'Memuat riwayat pengiriman...',
+                endMessage: 'Semua riwayat telah ditampilkan',
+              ),
           ],
         ],
       ),
     ),
-  );
+  ),
+);
 }
 }

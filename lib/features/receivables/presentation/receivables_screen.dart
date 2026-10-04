@@ -12,14 +12,21 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _activeFilter = 'Semua';
-  late final PagedListController<Map<String, dynamic>> _paginationController;
+  final PagedListController<Map<String, dynamic>> _paginationController =
+      PagedListController<Map<String, dynamic>>(
+    pageSize: 4,
+  );
+  bool _isLoading = false;
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 650));
+    if (mounted) setState(() => _isLoading = false);
+  }
 
   @override
   void initState() {
     super.initState();
-    _paginationController = PagedListController<Map<String, dynamic>>(
-      pageSize: 4,
-    );
     _paginationController.addListener(_onPaginationUpdated);
     _syncFilteredData();
   }
@@ -165,59 +172,65 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         title: const Text('Catatan Utang'),
         titleSpacing: 0,
       ),
-      body: Column(
-        children: [
-          // 1. Total Piutang Highlight Card (Clean surface, no harsh green block)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppDimensions.space16,
-              AppDimensions.space4,
-              AppDimensions.space16,
-              AppDimensions.space12,
-            ),
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppDimensions.space16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                border: Border.all(color: AppColors.border),
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: AppColors.brandPrimary,
+        child: Column(
+          children: [
+            // 1. Total Piutang Highlight Card (Clean surface, no harsh green block)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppDimensions.space16,
+                AppDimensions.space4,
+                AppDimensions.space16,
+                AppDimensions.space12,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: AppSkeletonizer(
+                isLoading: _isLoading,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(AppDimensions.space16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Total utang belum lunas',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w400,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          StatusBadge(label: 'Perlu Ditagih', type: BadgeType.warning),
+                        ],
+                      ),
+                      const SizedBox(height: AppDimensions.space8),
                       Text(
-                        'Total utang belum lunas',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w400,
-                          color: AppColors.textMuted,
+                        AppFormatters.currency(totalOutstanding),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.dangerText,
                         ),
                       ),
-                      StatusBadge(label: 'Perlu Ditagih', type: BadgeType.warning),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Dari ${filtered.length} transaksi pelanggan aktif',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: AppDimensions.space8),
-                  Text(
-                    AppFormatters.currency(totalOutstanding),
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.dangerText,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Dari ${filtered.length} transaksi pelanggan aktif',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
 
           // 2. Search & Filter Bar
           Padding(
@@ -279,72 +292,80 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
           // 3. Daftar Pelanggan Berhutang (Chunk Paginated)
           Expanded(
-            child: _paginationController.totalCount == 0
+            child: _paginationController.totalCount == 0 && !_isLoading
                 ? const Center(
                     child: Text(
                       'Tidak ada data piutang yang cocok.',
                       style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                     ),
                   )
-                : InfiniteScrollListener(
-                    onLoadMore: _paginationController.loadMore,
-                    isLoadingMore: _paginationController.isLoadingMore,
-                    hasMore: _paginationController.hasMore,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppDimensions.space16,
-                        0,
-                        AppDimensions.space16,
-                        96,
-                      ),
-                      itemCount: _paginationController.visibleItems.length + 1,
-                      separatorBuilder: (context, index) =>
-                          index < _paginationController.visibleItems.length - 1
-                              ? const SizedBox(height: AppDimensions.space8)
-                              : const SizedBox.shrink(),
-                      itemBuilder: (context, index) {
-                        if (index == _paginationController.visibleItems.length) {
-                          return PaginationLoadingIndicator(
-                            isLoadingMore: _paginationController.isLoadingMore,
-                            hasMore: _paginationController.hasMore,
-                            totalItems: _paginationController.totalCount,
-                            loadingMessage: 'Memuat data utang lainnya...',
-                            endMessage: 'Semua data utang telah ditampilkan',
-                          );
-                        }
-                        final item = _paginationController.visibleItems[index];
-                        final date = item['date'] as DateTime;
+                : AppSkeletonizer(
+                    isLoading: _isLoading,
+                    child: InfiniteScrollListener(
+                      onLoadMore: _paginationController.loadMore,
+                      isLoadingMore: _paginationController.isLoadingMore,
+                      hasMore: _paginationController.hasMore,
+                      child: ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppDimensions.space16,
+                          0,
+                          AppDimensions.space16,
+                          96,
+                        ),
+                        itemCount: _paginationController.visibleItems.length + 1,
+                        separatorBuilder: (context, index) =>
+                            index < _paginationController.visibleItems.length - 1
+                                ? const SizedBox(height: AppDimensions.space8)
+                                : const SizedBox.shrink(),
+                        itemBuilder: (context, index) {
+                          if (index == _paginationController.visibleItems.length) {
+                            if (_isLoading) return const SizedBox.shrink();
+                            return PaginationLoadingIndicator(
+                              isLoadingMore: _paginationController.isLoadingMore,
+                              hasMore: _paginationController.hasMore,
+                              totalItems: _paginationController.totalCount,
+                              loadingMessage: 'Memuat data utang lainnya...',
+                              endMessage: 'Semua data utang telah ditampilkan',
+                            );
+                          }
+                          final item = _paginationController.visibleItems[index];
+                          final date = item['date'] as DateTime;
 
-                        return FlatTransactionRow(
-                          title: item['customer'] as String,
-                          subtitle: AppFormatters.date(date),
-                          subtitleColor: AppColors.textMuted,
-                          amount: AppFormatters.currency(item['remaining'] as int),
-                          amountColor: AppColors.dangerText,
-                          statusLabel: item['statusLabel'] as String,
-                          statusType: item['statusType'] as BadgeType,
-                          trailingAction: InkWell(
-                            onTap: () => _showPaymentSheet(context, item),
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                              child: Text(
-                                'Bayar',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.brandPrimary,
+                          return FlatTransactionRow(
+                            title: item['customer'] as String,
+                            subtitle: AppFormatters.date(date),
+                            subtitleColor: AppColors.textMuted,
+                            amount: AppFormatters.currency(item['remaining'] as int),
+                            amountColor: AppColors.dangerText,
+                            statusLabel: item['statusLabel'] as String,
+                            statusType: item['statusType'] as BadgeType,
+                            trailingAction: Skeleton.ignore(
+                              child: InkWell(
+                                onTap: () => _showPaymentSheet(context, item),
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                  child: Text(
+                                    'Bayar',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                      color: AppColors.brandPrimary,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      },
+                          );
+                        },
+                      ),
                     ),
                   ),
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildFilterChip(String label) {
