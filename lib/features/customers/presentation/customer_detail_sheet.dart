@@ -25,11 +25,28 @@ class CustomerDetailSheet extends StatefulWidget {
 
 class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
   late CustomerModel _customer;
+  late final PagedListController<CustomerTransaction> _paginationController;
 
   @override
   void initState() {
     super.initState();
     _customer = widget.customer;
+    _paginationController = PagedListController<CustomerTransaction>(
+      pageSize: 3,
+      initialItems: _customer.transactions,
+    );
+    _paginationController.addListener(_onPaginationUpdated);
+  }
+
+  void _onPaginationUpdated() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _paginationController.removeListener(_onPaginationUpdated);
+    _paginationController.dispose();
+    super.dispose();
   }
 
   void _handlePayDebt() {
@@ -39,6 +56,7 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
     CustomersRepository.instance.payDebt(_customer.id, debt);
     setState(() {
       _customer = _customer.copyWith(activeDebt: 0);
+      _paginationController.setSource(_customer.transactions);
     });
     AppToast.success(
       title: 'Pelunasan berhasil dicatat',
@@ -55,11 +73,15 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBottomSheet(
-      title: _customer.name,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return InfiniteScrollListener(
+      onLoadMore: _paginationController.loadMore,
+      isLoadingMore: _paginationController.isLoadingMore,
+      hasMore: _paginationController.hasMore,
+      child: AppBottomSheet(
+        title: _customer.name,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // 1. Info Kontak & Alamat
           Container(
             padding: const EdgeInsets.symmetric(
@@ -285,7 +307,7 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
           ),
           const SizedBox(height: AppDimensions.space8),
 
-          if (_customer.transactions.isEmpty)
+          if (_paginationController.totalCount == 0)
             Container(
               padding: const EdgeInsets.all(AppDimensions.space16),
               alignment: Alignment.center,
@@ -294,8 +316,8 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                 style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
               ),
             )
-          else
-            ..._customer.transactions.map((tx) {
+          else ...[
+            ..._paginationController.visibleItems.map((tx) {
               return Container(
                 margin: const EdgeInsets.only(bottom: AppDimensions.space8),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -337,7 +359,7 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                           AppFormatters.currency(tx.totalAmount),
                           style: const TextStyle(
                             fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w500,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -352,8 +374,17 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
                 ),
               );
             }),
+            PaginationLoadingIndicator(
+              isLoadingMore: _paginationController.isLoadingMore,
+              hasMore: _paginationController.hasMore,
+              totalItems: _paginationController.totalCount,
+              loadingMessage: 'Memuat riwayat pengiriman...',
+              endMessage: 'Semua riwayat telah ditampilkan',
+            ),
+          ],
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

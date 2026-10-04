@@ -84,7 +84,7 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
           // 2. Large Centered Net Balance
           Text(
             _isVisible
-                ? '${AppFormatters.currency(widget.netCashflow)}'
+                ? AppFormatters.currency(widget.netCashflow)
                 : 'Rp ••••••••',
             textAlign: TextAlign.center,
             style: TextStyle(

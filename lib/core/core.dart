@@ -17,4 +17,6 @@ export 'widgets/metric_hero_card.dart';
 export 'widgets/quick_action_item.dart';
 export 'widgets/status_badge.dart';
 export 'widgets/app_toast.dart';
+export 'widgets/infinite_scroll_listener.dart';
+export 'utils/paged_list_controller.dart';
 export 'package:google_fonts/google_fonts.dart';

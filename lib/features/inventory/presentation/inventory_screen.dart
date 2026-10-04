@@ -20,6 +20,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
   static final DateTime _today = DateTime(_now.year, _now.month, _now.day);
   static final DateTime _yesterday = _today.subtract(const Duration(days: 1));
   static final DateTime _twoDaysAgo = _today.subtract(const Duration(days: 2));
+  static final DateTime _threeDaysAgo = _today.subtract(const Duration(days: 3));
+  static final DateTime _fourDaysAgo = _today.subtract(const Duration(days: 4));
 
   static final List<Map<String, dynamic>> _stockLogs = [
     // Hari Ini
@@ -88,7 +90,67 @@ class _InventoryScreenState extends State<InventoryScreen> {
       'date': _twoDaysAgo,
       'time': '10:30 WIB',
     },
+    // 3 Hari Lalu
+    {
+      'title': 'Pasokan Masuk dari Truk Agen',
+      'qty': 150,
+      'isMasuk': true,
+      'date': _threeDaysAgo,
+      'time': '08:30 WIB',
+    },
+    {
+      'title': 'Kirim ke Warung Barokah Bu Ani',
+      'qty': 12,
+      'isMasuk': false,
+      'date': _threeDaysAgo,
+      'time': '16:00 WIB',
+    },
+    {
+      'title': 'Kirim ke Toko Klontong Pak De',
+      'qty': 18,
+      'isMasuk': false,
+      'date': _threeDaysAgo,
+      'time': '11:45 WIB',
+    },
+    // 4 Hari Lalu
+    {
+      'title': 'Kirim ke Kantin Bu Lestari',
+      'qty': 8,
+      'isMasuk': false,
+      'date': _fourDaysAgo,
+      'time': '13:20 WIB',
+    },
+    {
+      'title': 'Kirim ke Kedai Kopi Mas Yono',
+      'qty': 14,
+      'isMasuk': false,
+      'date': _fourDaysAgo,
+      'time': '09:10 WIB',
+    },
   ];
+
+  late final PagedListController<Map<String, dynamic>> _paginationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _paginationController = PagedListController<Map<String, dynamic>>(
+      pageSize: 4,
+      initialItems: _stockLogs,
+    );
+    _paginationController.addListener(_onPaginationUpdated);
+  }
+
+  void _onPaginationUpdated() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _paginationController.removeListener(_onPaginationUpdated);
+    _paginationController.dispose();
+    super.dispose();
+  }
 
   String _formatDateHeader(DateTime date) {
     if (date.year == _today.year &&
@@ -106,9 +168,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Group stock logs by date
+    // Group visible stock logs by date for pagination chunking
+    final visibleLogs = _paginationController.visibleItems;
     final Map<DateTime, List<Map<String, dynamic>>> grouped = {};
-    for (final tx in _stockLogs) {
+    for (final tx in visibleLogs) {
       final date = tx['date'] as DateTime;
       final dateKey = DateTime(date.year, date.month, date.day);
       grouped.putIfAbsent(dateKey, () => []).add(tx);
@@ -126,7 +189,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
+      body: InfiniteScrollListener(
+        onLoadMore: _paginationController.loadMore,
+        isLoadingMore: _paginationController.isLoadingMore,
+        hasMore: _paginationController.hasMore,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(
           AppDimensions.space16,
           AppDimensions.space8,
@@ -225,11 +292,19 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 ],
               );
             }),
+            PaginationLoadingIndicator(
+              isLoadingMore: _paginationController.isLoadingMore,
+              hasMore: _paginationController.hasMore,
+              totalItems: _paginationController.totalCount,
+              loadingMessage: 'Memuat catatan pasokan lainnya...',
+              endMessage: 'Semua catatan pasokan telah ditampilkan',
+            ),
             const SizedBox(height: 96),
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildStockHeroCard(BuildContext context) {

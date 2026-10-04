@@ -9,6 +9,8 @@ class DistributionScreen extends StatefulWidget {
   static final DateTime _today = DateTime(_now.year, _now.month, _now.day);
   static final DateTime _yesterday = _today.subtract(const Duration(days: 1));
   static final DateTime _twoDaysAgo = _today.subtract(const Duration(days: 2));
+  static final DateTime _threeDaysAgo = _today.subtract(const Duration(days: 3));
+  static final DateTime _fourDaysAgo = _today.subtract(const Duration(days: 4));
 
   static List<Map<String, dynamic>> get sampleTransactions => [
     // Hari Ini
@@ -118,6 +120,60 @@ class DistributionScreen extends StatefulWidget {
       'iconColor': AppColors.brandPrimary,
       'iconBg': AppColors.canvas,
     },
+    // 3 Hari Lalu
+    {
+      'title': 'Warung Barokah Bu Ani',
+      'qty': 12,
+      'items': '12 tabung',
+      'date': _threeDaysAgo,
+      'time': '16:00 WIB',
+      'amount': 228000,
+      'statusType': BadgeType.success,
+      'statusLabel': 'Lunas',
+      'icon': Icons.person_outline,
+      'iconColor': AppColors.brandPrimary,
+      'iconBg': AppColors.canvas,
+    },
+    {
+      'title': 'Toko Klontong Pak De',
+      'qty': 18,
+      'items': '18 tabung',
+      'date': _threeDaysAgo,
+      'time': '11:45 WIB',
+      'amount': 342000,
+      'statusType': BadgeType.warning,
+      'statusLabel': 'Belum Bayar',
+      'icon': Icons.person_outline,
+      'iconColor': AppColors.brandPrimary,
+      'iconBg': AppColors.canvas,
+    },
+    // 4 Hari Lalu
+    {
+      'title': 'Kantin Bu Lestari',
+      'qty': 8,
+      'items': '8 tabung',
+      'date': _fourDaysAgo,
+      'time': '13:20 WIB',
+      'amount': 152000,
+      'statusType': BadgeType.success,
+      'statusLabel': 'Lunas',
+      'icon': Icons.person_outline,
+      'iconColor': AppColors.brandPrimary,
+      'iconBg': AppColors.canvas,
+    },
+    {
+      'title': 'Kedai Kopi Mas Yono',
+      'qty': 14,
+      'items': '14 tabung',
+      'date': _fourDaysAgo,
+      'time': '09:10 WIB',
+      'amount': 266000,
+      'statusType': BadgeType.success,
+      'statusLabel': 'Lunas',
+      'icon': Icons.person_outline,
+      'iconColor': AppColors.brandPrimary,
+      'iconBg': AppColors.canvas,
+    },
   ];
 
   @override
@@ -128,11 +184,54 @@ class _DistributionScreenState extends State<DistributionScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _activeFilter = 'Semua';
   String _searchQuery = '';
+  late final PagedListController<Map<String, dynamic>> _paginationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _paginationController = PagedListController<Map<String, dynamic>>(
+      pageSize: 4,
+    );
+    _paginationController.addListener(_onPaginationUpdated);
+    _syncFilteredData();
+  }
+
+  void _onPaginationUpdated() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    _paginationController.removeListener(_onPaginationUpdated);
+    _paginationController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<Map<String, dynamic>> _getFilteredTransactions() {
+    return DistributionScreen.sampleTransactions.where((tx) {
+      if (_activeFilter == 'Lunas' && tx['statusLabel'] != 'Lunas') {
+        return false;
+      }
+      if (_activeFilter == 'Belum Bayar' && tx['statusLabel'] != 'Belum Bayar') {
+        return false;
+      }
+
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final title = (tx['title'] as String).toLowerCase();
+        final items = (tx['items'] as String).toLowerCase();
+        if (!title.contains(query) && !items.contains(query)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  void _syncFilteredData() {
+    final filtered = _getFilteredTransactions();
+    _paginationController.setSource(filtered);
   }
 
   String _formatDateHeader(DateTime date) {
@@ -151,27 +250,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 1. Filter transactions
-    final filtered = DistributionScreen.sampleTransactions.where((tx) {
-      if (_activeFilter == 'Lunas' && tx['statusLabel'] != 'Lunas') {
-        return false;
-      }
-      if (_activeFilter == 'Belum Bayar' && tx['statusLabel'] != 'Belum Bayar') {
-        return false;
-      }
-
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        final title = (tx['title'] as String).toLowerCase();
-        final items = (tx['items'] as String).toLowerCase();
-        if (!title.contains(query) && !items.contains(query)) {
-          return false;
-        }
-      }
-      return true;
-    }).toList();
-
-    // 2. Settlement metrics for today
+    // 1. Settlement metrics for today
     final todayTxs = DistributionScreen.sampleTransactions.where((tx) {
       final d = tx['date'] as DateTime;
       return d.year == DistributionScreen._today.year &&
@@ -188,9 +267,10 @@ class _DistributionScreenState extends State<DistributionScreen> {
         .fold<int>(0, (sum, tx) => sum + (tx['amount'] as int? ?? 0));
     final todayMargin = todayTotalQty * 3000;
 
-    // 3. Group by date
+    // 3. Group visible items by date for pagination chunking
+    final visibleTxs = _paginationController.visibleItems;
     final Map<DateTime, List<Map<String, dynamic>>> grouped = {};
-    for (final tx in filtered) {
+    for (final tx in visibleTxs) {
       final date = tx['date'] as DateTime;
       final dateKey = DateTime(date.year, date.month, date.day);
       grouped.putIfAbsent(dateKey, () => []).add(tx);
@@ -374,6 +454,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
                   onChanged: (val) {
                     setState(() {
                       _searchQuery = val.trim();
+                      _syncFilteredData();
                     });
                   },
                   decoration: InputDecoration(
@@ -391,6 +472,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
                               _searchController.clear();
                               setState(() {
                                 _searchQuery = '';
+                                _syncFilteredData();
                               });
                             },
                           )
@@ -417,9 +499,9 @@ class _DistributionScreenState extends State<DistributionScreen> {
           ),
           const SizedBox(height: AppDimensions.space8),
 
-          // Daftar Transaksi Terkelompok Berdasarkan Tanggal
+          // Daftar Transaksi Terkelompok Berdasarkan Tanggal (Chunk Paginated)
           Expanded(
-            child: filtered.isEmpty
+            child: _paginationController.totalCount == 0
                 ? const Padding(
                     padding: EdgeInsets.all(AppDimensions.space24),
                     child: Center(
@@ -430,21 +512,34 @@ class _DistributionScreenState extends State<DistributionScreen> {
                       ),
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(
-                      left: AppDimensions.space16,
-                      right: AppDimensions.space16,
-                      top: AppDimensions.space4,
-                      bottom: 96,
-                    ),
-                    itemCount: sortedDates.length,
-                    itemBuilder: (context, index) {
-                      final dateKey = sortedDates[index];
-                      final itemsForDay = grouped[dateKey]!;
-                      final dayQty = itemsForDay.fold<int>(
-                          0, (sum, tx) => sum + (tx['qty'] as int? ?? 0));
-                      final dayAmount = itemsForDay.fold<int>(
-                          0, (sum, tx) => sum + (tx['amount'] as int? ?? 0));
+                : InfiniteScrollListener(
+                    onLoadMore: _paginationController.loadMore,
+                    isLoadingMore: _paginationController.isLoadingMore,
+                    hasMore: _paginationController.hasMore,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.only(
+                        left: AppDimensions.space16,
+                        right: AppDimensions.space16,
+                        top: AppDimensions.space4,
+                        bottom: 96,
+                      ),
+                      itemCount: sortedDates.length + 1,
+                      itemBuilder: (context, index) {
+                        if (index == sortedDates.length) {
+                          return PaginationLoadingIndicator(
+                            isLoadingMore: _paginationController.isLoadingMore,
+                            hasMore: _paginationController.hasMore,
+                            totalItems: _paginationController.totalCount,
+                            loadingMessage: 'Memuat data distribusi lainnya...',
+                            endMessage: 'Semua data distribusi telah ditampilkan',
+                          );
+                        }
+                        final dateKey = sortedDates[index];
+                        final itemsForDay = grouped[dateKey]!;
+                        final dayQty = itemsForDay.fold<int>(
+                            0, (sum, tx) => sum + (tx['qty'] as int? ?? 0));
+                        final dayAmount = itemsForDay.fold<int>(
+                            0, (sum, tx) => sum + (tx['amount'] as int? ?? 0));
 
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,6 +595,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
                       );
                     },
                   ),
+                ),
           ),
         ],
       ),
@@ -512,6 +608,7 @@ class _DistributionScreenState extends State<DistributionScreen> {
       onTap: () {
         setState(() {
           _activeFilter = label;
+          _syncFilteredData();
         });
       },
       child: Container(

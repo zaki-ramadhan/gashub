@@ -12,11 +12,54 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _activeFilter = 'Semua';
+  late final PagedListController<Map<String, dynamic>> _paginationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _paginationController = PagedListController<Map<String, dynamic>>(
+      pageSize: 4,
+    );
+    _paginationController.addListener(_onPaginationUpdated);
+    _syncFilteredData();
+  }
+
+  void _onPaginationUpdated() {
+    if (mounted) setState(() {});
+  }
 
   @override
   void dispose() {
+    _paginationController.removeListener(_onPaginationUpdated);
+    _paginationController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  List<Map<String, dynamic>> _getFilteredData() {
+    return _receivablesData.where((item) {
+      if (_activeFilter == 'Belum Bayar' && item['statusLabel'] != 'Belum Bayar') {
+        return false;
+      }
+      if (_activeFilter == 'Cicilan Sebagian' && item['statusLabel'] != 'Cicilan Sebagian') {
+        return false;
+      }
+
+      if (_searchQuery.isNotEmpty) {
+        final query = _searchQuery.toLowerCase();
+        final name = (item['customer'] as String).toLowerCase();
+        final inv = (item['invoice'] as String).toLowerCase();
+        if (!name.contains(query) && !inv.contains(query)) {
+          return false;
+        }
+      }
+      return true;
+    }).toList();
+  }
+
+  void _syncFilteredData() {
+    final filtered = _getFilteredData();
+    _paginationController.setSource(filtered);
   }
 
   static final List<Map<String, dynamic>> _receivablesData = [
@@ -53,6 +96,42 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       'remaining': 860000,
       'date': DateTime.now().subtract(const Duration(days: 5)),
       'invoice': '#DST-202610-005',
+      'statusLabel': 'Belum Bayar',
+      'statusType': BadgeType.danger,
+    },
+    {
+      'customer': 'Kios Gas Bu Nurul',
+      'phone': '0812-8877-6655',
+      'remaining': 285000,
+      'date': DateTime.now().subtract(const Duration(days: 3)),
+      'invoice': '#DST-202610-008',
+      'statusLabel': 'Belum Bayar',
+      'statusType': BadgeType.danger,
+    },
+    {
+      'customer': 'Toko Klontong Pak De',
+      'phone': '0852-3344-5566',
+      'remaining': 342000,
+      'date': DateTime.now().subtract(const Duration(days: 6)),
+      'invoice': '#DST-202610-009',
+      'statusLabel': 'Belum Bayar',
+      'statusType': BadgeType.danger,
+    },
+    {
+      'customer': 'Kantin Bu Lestari',
+      'phone': '0878-9900-1122',
+      'remaining': 152000,
+      'date': DateTime.now().subtract(const Duration(days: 7)),
+      'invoice': '#DST-202610-011',
+      'statusLabel': 'Cicilan Sebagian',
+      'statusType': BadgeType.warning,
+    },
+    {
+      'customer': 'Kedai Kopi Mas Yono',
+      'phone': '0819-2233-4455',
+      'remaining': 266000,
+      'date': DateTime.now().subtract(const Duration(days: 8)),
+      'invoice': '#DST-202610-012',
       'statusLabel': 'Belum Bayar',
       'statusType': BadgeType.danger,
     },
@@ -150,7 +229,12 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                   controller: _searchController,
                   style: const TextStyle(fontSize: 14),
                   inputFormatters: [AppInputFormatters.cleanText],
-                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val.trim();
+                      _syncFilteredData();
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Cari nama pelanggan...',
                     hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
@@ -164,7 +248,10 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                             icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
                             onPressed: () {
                               _searchController.clear();
-                              setState(() => _searchQuery = '');
+                              setState(() {
+                                _searchQuery = '';
+                                _syncFilteredData();
+                              });
                             },
                           )
                         : null,
@@ -190,47 +277,69 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
           ),
           const SizedBox(height: AppDimensions.space8),
 
-          // 3. Daftar Pelanggan Berhutang
+          // 3. Daftar Pelanggan Berhutang (Chunk Paginated)
           Expanded(
-            child: filtered.isEmpty
+            child: _paginationController.totalCount == 0
                 ? const Center(
                     child: Text(
                       'Tidak ada data piutang yang cocok.',
                       style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                     ),
                   )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space16),
-                    itemCount: filtered.length,
-                    separatorBuilder: (context, index) => const SizedBox(height: AppDimensions.space8),
-                    itemBuilder: (context, index) {
-                      final item = filtered[index];
-                      final date = item['date'] as DateTime;
+                : InfiniteScrollListener(
+                    onLoadMore: _paginationController.loadMore,
+                    isLoadingMore: _paginationController.isLoadingMore,
+                    hasMore: _paginationController.hasMore,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppDimensions.space16,
+                        0,
+                        AppDimensions.space16,
+                        96,
+                      ),
+                      itemCount: _paginationController.visibleItems.length + 1,
+                      separatorBuilder: (context, index) =>
+                          index < _paginationController.visibleItems.length - 1
+                              ? const SizedBox(height: AppDimensions.space8)
+                              : const SizedBox.shrink(),
+                      itemBuilder: (context, index) {
+                        if (index == _paginationController.visibleItems.length) {
+                          return PaginationLoadingIndicator(
+                            isLoadingMore: _paginationController.isLoadingMore,
+                            hasMore: _paginationController.hasMore,
+                            totalItems: _paginationController.totalCount,
+                            loadingMessage: 'Memuat data utang lainnya...',
+                            endMessage: 'Semua data utang telah ditampilkan',
+                          );
+                        }
+                        final item = _paginationController.visibleItems[index];
+                        final date = item['date'] as DateTime;
 
-                      return FlatTransactionRow(
-                        title: item['customer'] as String,
-                        subtitle: AppFormatters.date(date),
-                        subtitleColor: AppColors.textMuted,
-                        amount: AppFormatters.currency(item['remaining'] as int),
-                        amountColor: AppColors.dangerText,
-                        statusLabel: item['statusLabel'] as String,
-                        statusType: item['statusType'] as BadgeType,
-                        trailingAction: InkWell(
-                          onTap: () => _showPaymentSheet(context, item),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            child: Text(
-                              'Bayar',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.brandPrimary,
+                        return FlatTransactionRow(
+                          title: item['customer'] as String,
+                          subtitle: AppFormatters.date(date),
+                          subtitleColor: AppColors.textMuted,
+                          amount: AppFormatters.currency(item['remaining'] as int),
+                          amountColor: AppColors.dangerText,
+                          statusLabel: item['statusLabel'] as String,
+                          statusType: item['statusType'] as BadgeType,
+                          trailingAction: InkWell(
+                            onTap: () => _showPaymentSheet(context, item),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              child: Text(
+                                'Bayar',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.brandPrimary,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
                   ),
           ),
         ],
@@ -241,7 +350,12 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   Widget _buildFilterChip(String label) {
     final isSelected = _activeFilter == label;
     return GestureDetector(
-      onTap: () => setState(() => _activeFilter = label),
+      onTap: () {
+        setState(() {
+          _activeFilter = label;
+          _syncFilteredData();
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -299,17 +413,18 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                   await Future.delayed(const Duration(milliseconds: 300));
                   if (!ctx.mounted) return;
 
-                  setState(() {
-                    final newRemaining = totalDebt - enteredAmount;
-                    item['remaining'] = newRemaining;
-                    if (newRemaining == 0) {
-                      item['statusLabel'] = 'Lunas';
-                      item['statusType'] = BadgeType.success;
-                    } else {
-                      item['statusLabel'] = 'Cicilan Sebagian';
-                      item['statusType'] = BadgeType.warning;
-                    }
-                  });
+                    setState(() {
+                      final newRemaining = totalDebt - enteredAmount;
+                      item['remaining'] = newRemaining;
+                      if (newRemaining == 0) {
+                        item['statusLabel'] = 'Lunas';
+                        item['statusType'] = BadgeType.success;
+                      } else {
+                        item['statusLabel'] = 'Cicilan Sebagian';
+                        item['statusType'] = BadgeType.warning;
+                      }
+                      _syncFilteredData();
+                    });
 
                   Navigator.of(ctx, rootNavigator: true).pop();
                   AppToast.success(
