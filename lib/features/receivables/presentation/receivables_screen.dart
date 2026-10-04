@@ -264,7 +264,8 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   }
 
   void _showPaymentSheet(BuildContext context, Map<String, dynamic> item) {
-    final payController = TextEditingController(text: AppFormatters.number(item['remaining'] as int));
+    final payController = TextEditingController(text: '');
+    final int totalDebt = item['remaining'] as int;
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -275,122 +276,240 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
+            final enteredAmount = AppInputFormatters.parseNumber(payController.text);
+            final remainingAfter = totalDebt - enteredAmount;
+            final bool isOverpaid = enteredAmount > totalDebt;
+
             return AppBottomSheet(
               title: 'Catat Bayar Utang',
               bottomAction: AppButton(
                 text: 'Simpan Pembayaran',
                 isLoading: isSaving,
                 onPressed: () async {
-                  final amount = AppInputFormatters.parseNumber(payController.text);
-                  if (amount <= 0) {
-                    AppToast.warning(title: 'Nominal belum valid');
+                  if (enteredAmount <= 0) {
+                    AppToast.warning(title: 'Masukkan nominal pembayaran');
+                    return;
+                  }
+                  if (isOverpaid) {
+                    AppToast.warning(title: 'Nominal melebihi sisa utang');
                     return;
                   }
 
                   setSheetState(() => isSaving = true);
-                  await Future.delayed(const Duration(milliseconds: 350));
+                  await Future.delayed(const Duration(milliseconds: 300));
                   if (!ctx.mounted) return;
 
+                  setState(() {
+                    final newRemaining = totalDebt - enteredAmount;
+                    item['remaining'] = newRemaining;
+                    if (newRemaining == 0) {
+                      item['statusLabel'] = 'Lunas';
+                      item['statusType'] = BadgeType.success;
+                    } else {
+                      item['statusLabel'] = 'Cicilan Sebagian';
+                      item['statusType'] = BadgeType.warning;
+                    }
+                  });
+
                   Navigator.of(ctx, rootNavigator: true).pop();
-                  AppToast.success(title: 'Pembayaran berhasil disimpan');
+                  AppToast.success(
+                    title: enteredAmount == totalDebt
+                        ? 'Utang berhasil dilunasi'
+                        : 'Cicilan berhasil disimpan',
+                  );
                 },
               ),
               child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Info Warung Card
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.space12),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Info Pelanggan & Utang (Teks biasa tanpa banner / card)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        item['customer'] as String,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['customer'] as String,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${item['invoice']} • ${AppFormatters.date(item['date'] as DateTime)}',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'Sisa utang saat ini',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            AppFormatters.currency(totalDebt),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.dangerText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: AppDimensions.space12),
+                  const Divider(height: 1, thickness: 1, color: AppColors.border),
+                  const SizedBox(height: AppDimensions.space16),
+
+                  // 2. Nominal Pembayaran Input
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Nominal yang dibayar (Rp)',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                           color: AppColors.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Tanggal kirim: ${AppFormatters.date(item['date'] as DateTime)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
+                      GestureDetector(
+                        onTap: () {
+                          payController.text = AppFormatters.number(totalDebt);
+                          setSheetState(() {});
+                        },
+                        child: const Text(
+                          'Lunasi Penuh',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.brandPrimary,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text(
-                      'Sisa Piutang',
-                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: payController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [AppInputFormatters.thousands],
+                    onChanged: (_) => setSheetState(() {}),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
                     ),
-                    Text(
-                      AppFormatters.currency(item['remaining'] as int),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.dangerText,
+                    decoration: const InputDecoration(
+                      prefixText: 'Rp ',
+                      hintText: '0',
+                      hintStyle: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textMuted,
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space16),
+                  ),
+                  const SizedBox(height: 8),
 
-          // Nominal Pembayaran Input
-          const Text(
-            'Nominal Pembayaran (Rp)',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          TextField(
-            controller: payController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [AppInputFormatters.thousands],
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-            decoration: const InputDecoration(
-              prefixText: 'Rp ',
-              hintText: '0',
-              hintStyle: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Pastikan nominal uang tunai atau transfer sesuai sebelum menyimpan.',
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ],
+                  // 3. Status Kalkulasi Pembayaran / Cicilan Live
+                  if (enteredAmount == 0)
+                    const Text(
+                      'Ketik nominal yang dibayar pelanggan (bisa cicilan atau lunas).',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    )
+                  else if (isOverpaid)
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: AppColors.dangerText,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Nominal melebihi sisa utang (${AppFormatters.currency(totalDebt)})',
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.dangerText,
+                          ),
+                        ),
+                      ],
+                    )
+                  else if (enteredAmount == totalDebt)
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF16A34A),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'Pelunasan penuh • Sisa utang: Rp 0 (Lunas)',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF166534),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFD97706),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Cicilan sebagian • Sisa utang nanti: ${AppFormatters.currency(remainingAfter)}',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.warningText,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
             );
           },

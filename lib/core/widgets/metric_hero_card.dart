@@ -35,7 +35,6 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
   @override
   Widget build(BuildContext context) {
     final isPositive = widget.netCashflow >= 0;
-    final netPrefix = isPositive ? '+' : '';
 
     return Container(
       decoration: BoxDecoration(
@@ -85,7 +84,7 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
           // 2. Large Centered Net Balance
           Text(
             _isVisible
-                ? '$netPrefix${AppFormatters.currency(widget.netCashflow)}'
+                ? '${AppFormatters.currency(widget.netCashflow)}'
                 : 'Rp ••••••••',
             textAlign: TextAlign.center,
             style: TextStyle(

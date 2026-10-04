@@ -138,7 +138,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       children: [
                         _buildSecondaryAction(
                           icon: Icons.menu_book_outlined,
-                          label: 'Catatan Utang',
+                          label: 'Catat Utang',
                           onTap: () => context.push('/piutang'),
                         ),
                         _buildSecondaryAction(
