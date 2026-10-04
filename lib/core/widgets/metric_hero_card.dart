@@ -103,19 +103,19 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
             children: [
               _buildCircularAction(
                 icon: Icons.add,
-                label: 'Distribusi',
+                label: 'Kirim Gas',
                 onTap: widget.onDistribute,
               ),
               const SizedBox(width: 32),
               _buildCircularAction(
                 icon: Icons.arrow_downward,
-                label: 'Terima Stok',
+                label: 'Tukar Truk',
                 onTap: widget.onRestock,
               ),
               const SizedBox(width: 32),
               _buildCircularAction(
                 icon: Icons.arrow_upward,
-                label: 'Catat Biaya',
+                label: 'Bensin/Upah',
                 onTap: widget.onExpense,
               ),
             ],
@@ -135,9 +135,10 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                 // Inflow
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(3),
@@ -170,6 +171,7 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
+                        textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -183,14 +185,14 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                   width: 1,
                   color: AppColors.border,
                 ),
-                const SizedBox(width: AppDimensions.space16),
 
                 // Outflow
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Container(
                             padding: const EdgeInsets.all(3),
@@ -223,6 +225,7 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
+                        textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -83,7 +83,7 @@ class _ReportsChartCardState extends State<ReportsChartCard> {
                   Text(
                     _isOmsetMetric ? 'Total omset per interval' : 'Jumlah tabung fisik terjual',
                     style: const TextStyle(
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w400,
                       color: AppColors.textMuted,
                     ),
@@ -138,7 +138,7 @@ class _ReportsChartCardState extends State<ReportsChartCard> {
                         '${point.label}\n',
                         const TextStyle(
                           color: Colors.white70,
-                          fontSize: 11,
+                          fontSize: 12,
                           fontWeight: FontWeight.w400,
                         ),
                         children: [
@@ -264,7 +264,7 @@ class _ReportsChartCardState extends State<ReportsChartCard> {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
             color: isSelected ? AppColors.brandPrimary : AppColors.textMuted,
           ),

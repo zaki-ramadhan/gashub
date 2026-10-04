@@ -65,9 +65,15 @@ abstract final class AppTheme {
           ),
         ),
       ),
+      hintColor: AppColors.textMuted,
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        hintStyle: const TextStyle(
+          color: AppColors.textMuted,
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+        ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: AppDimensions.space20,
           vertical: AppDimensions.space12,

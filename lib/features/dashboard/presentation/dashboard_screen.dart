@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../../distribution/presentation/distribution_form_sheet.dart';
+import '../../distribution/presentation/distribution_screen.dart';
+import '../../inventory/presentation/price_setting_sheet.dart';
 import '../../inventory/presentation/restock_form_sheet.dart';
 import '../../reports/presentation/expense_form_sheet.dart';
 
@@ -121,7 +123,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: AppDimensions.space12),
 
-                  // 2. Secondary Quick Tools Card (Sesuai Referensi Card 2)
+                  // 2. Secondary Quick Tools Card (4 Menu Pendukung Utama)
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -133,27 +135,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       horizontal: AppDimensions.space8,
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildSecondaryAction(
-                          icon: Icons.account_balance_wallet_outlined,
-                          label: 'Utang Warung',
+                          icon: Icons.menu_book_outlined,
+                          label: 'Catatan Utang',
                           onTap: () => context.push('/piutang'),
                         ),
                         _buildSecondaryAction(
                           icon: Icons.propane_tank_outlined,
-                          label: 'Stok Tabung',
+                          label: 'Stok Gas',
                           onTap: () => context.go('/stok'),
                         ),
                         _buildSecondaryAction(
-                          icon: Icons.pie_chart_outline,
-                          label: 'Kuota 3kg',
-                          onTap: () => context.go('/laporan'),
+                          icon: Icons.person_outline,
+                          label: 'Pelanggan',
+                          onTap: () => context.push('/warung'),
                         ),
                         _buildSecondaryAction(
-                          icon: Icons.bar_chart_outlined,
-                          label: 'Untung Rugi',
-                          onTap: () => context.go('/laporan'),
+                          icon: Icons.sell_outlined,
+                          label: 'Atur Harga',
+                          onTap: () => PriceSettingSheet.show(context),
                         ),
                       ],
                     ),
@@ -203,44 +204,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: AppDimensions.space10),
 
-                  // 4. Standalone Pill-Shaped Transaction Cards (Tanpa Divider Tempel)
-                  FlatTransactionRow(
-                    title: 'Warung Madura Pak Joko',
-                    subtitle: '15 tabung • 14:30 WIB',
-                    amount: AppFormatters.currency(285000),
-                    statusLabel: 'Lunas',
-                    statusType: BadgeType.success,
-                    icon: Icons.arrow_upward,
-                    iconColor: AppColors.brandPrimary,
-                    iconBg: AppColors.brandAccent,
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: AppDimensions.space8),
-
-                  FlatTransactionRow(
-                    title: 'Toko Berkah Ibu',
-                    subtitle: '20 tabung • 13:15 WIB',
-                    amount: AppFormatters.currency(380000),
-                    statusLabel: 'Sebagian',
-                    statusType: BadgeType.warning,
-                    icon: Icons.schedule,
-                    iconColor: AppColors.warningText,
-                    iconBg: const Color(0xFFFEF3C7),
-                    onTap: () {},
-                  ),
-                  const SizedBox(height: AppDimensions.space8),
-
-                  FlatTransactionRow(
-                    title: 'Pangkalan Barokah H. Slamet',
-                    subtitle: '30 tabung • 11:00 WIB',
-                    amount: AppFormatters.currency(570000),
-                    statusLabel: 'Belum Bayar',
-                    statusType: BadgeType.danger,
-                    icon: Icons.priority_high,
-                    iconColor: AppColors.dangerText,
-                    iconBg: const Color(0xFFFEE2E2),
-                    onTap: () {},
-                  ),
+                  // 4. Standalone Pill-Shaped Transaction Cards (Reused directly from DistributionScreen.sampleTransactions)
+                  ...DistributionScreen.sampleTransactions.take(3).map((item) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: AppDimensions.space8),
+                      child: FlatTransactionRow(
+                        title: item['title'] as String,
+                        subtitle: item['items'] as String,
+                        amount: AppFormatters.currency(item['amount'] as int),
+                        statusLabel: item['statusLabel'] as String,
+                        statusType: item['statusType'] as BadgeType,
+                        time: item['time'] as String?,
+                        icon: Icons.person_outline,
+                        iconColor: item['iconColor'] as Color?,
+                        iconBg: item['iconBg'] as Color?,
+                      ),
+                    );
+                  }),
                   const SizedBox(height: 96),
                 ],
               ),
@@ -256,33 +236,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-        child: Column(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: AppColors.canvas,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.canvas,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Icon(icon, size: 20, color: AppColors.textPrimary),
               ),
-              child: Icon(icon, size: 20, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textPrimary,
+              const SizedBox(height: 6),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textPrimary,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/customers/presentation/customers_screen.dart'; // Customer directory
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/distribution/presentation/distribution_screen.dart';
 import '../../features/inventory/presentation/inventory_screen.dart';
@@ -53,7 +54,14 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/laporan',
-              builder: (context, state) => const ReportsScreen(),
+              builder: (context, state) {
+                final tabParam = state.uri.queryParameters['tab'];
+                final initialTab = int.tryParse(tabParam ?? '');
+                return ReportsScreen(
+                  key: ValueKey(state.uri.toString()),
+                  initialTabIndex: initialTab,
+                );
+              },
             ),
           ],
         ),
@@ -63,6 +71,11 @@ final GoRouter appRouter = GoRouter(
       path: '/piutang',
       parentNavigatorKey: _rootNavigatorKey,
       builder: (context, state) => const ReceivablesScreen(),
+    ),
+    GoRoute(
+      path: '/warung',
+      parentNavigatorKey: _rootNavigatorKey,
+      builder: (context, state) => const CustomersScreen(),
     ),
   ],
 );

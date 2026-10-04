@@ -20,13 +20,13 @@ class PriceSettingSheet extends StatefulWidget {
 }
 
 class _PriceSettingSheetState extends State<PriceSettingSheet> {
-  final _sellingPriceController = TextEditingController(text: '19000');
-  final _purchasePriceController = TextEditingController(text: '15750');
+  final _sellingPriceController = TextEditingController(text: AppFormatters.number(19000));
+  final _purchasePriceController = TextEditingController(text: AppFormatters.number(15750));
 
   bool _isLoading = false;
 
-  int get _sellingPrice => int.tryParse(_sellingPriceController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
-  int get _purchasePrice => int.tryParse(_purchasePriceController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+  int get _sellingPrice => AppInputFormatters.parseNumber(_sellingPriceController.text);
+  int get _purchasePrice => AppInputFormatters.parseNumber(_purchasePriceController.text);
   int get _margin => _sellingPrice - _purchasePrice;
 
   @override
@@ -55,7 +55,7 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
     final marginPercent = _sellingPrice > 0 ? ((_margin / _sellingPrice) * 100).toStringAsFixed(1) : '0';
 
     return AppBottomSheet(
-      title: 'Atur Harga Gas 3kg',
+      title: 'Atur Harga Gas',
       bottomAction: AppButton(
         text: 'Simpan Harga',
         isLoading: _isLoading,
@@ -78,7 +78,7 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
                 SizedBox(width: AppDimensions.space8),
                 Expanded(
                   child: Text(
-                    'Harga ini otomatis dipakai saat mencatat penjualan ke warung dan pasokan baru.',
+                    'Harga acuan saat mencatat penjualan dan penerimaan pasokan.',
                     style: TextStyle(
                       fontSize: 12,
                       color: AppColors.textMuted,
@@ -91,9 +91,9 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
           ),
           const SizedBox(height: AppDimensions.space16),
 
-          // 2. Input Harga Jual ke Warung
+          // 2. Input Harga Jual Gas
           const Text(
-            'Harga Jual ke Warung',
+            'Harga Jual Gas',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -102,13 +102,14 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
           ),
           const SizedBox(height: 2),
           const Text(
-            'Berapa harga yang Anda tentukan saat mengantar gas ke warung.',
+            'Harga jual per tabung ke pelanggan.',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: AppDimensions.space8),
           TextFormField(
             controller: _sellingPriceController,
             keyboardType: TextInputType.number,
+            inputFormatters: [AppInputFormatters.thousands],
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             decoration: const InputDecoration(
               prefixText: 'Rp ',
@@ -119,9 +120,9 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
           ),
           const SizedBox(height: AppDimensions.space16),
 
-          // 3. Input Harga Modal Beli dari Agen
+          // 3. Input Harga Modal Beli
           const Text(
-            'Harga Modal Beli dari Agen',
+            'Harga Modal Beli',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -130,13 +131,14 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
           ),
           const SizedBox(height: 2),
           const Text(
-            'Berapa harga tebus per tabung saat pasokan gas masuk ke pangkalan.',
+            'Harga tebus per tabung dari agen.',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: AppDimensions.space8),
           TextFormField(
             controller: _purchasePriceController,
             keyboardType: TextInputType.number,
+            inputFormatters: [AppInputFormatters.thousands],
             style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             decoration: const InputDecoration(
               prefixText: 'Rp ',

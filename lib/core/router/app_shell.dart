@@ -133,7 +133,7 @@ class AppShell extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                   color: isSelected ? AppColors.brandPrimary : AppColors.textMuted,
                 ),

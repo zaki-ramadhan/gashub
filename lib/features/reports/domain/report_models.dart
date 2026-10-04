@@ -50,6 +50,8 @@ class ReportPeriodSummary {
 
   int get grossProfit => rawOmset - hpp;
   int get netProfit => grossProfit - operationalCost;
+  double get grossMarginPct => rawOmset > 0 ? (grossProfit / rawOmset) * 100 : 0.0;
+  double get profitMarginPct => rawOmset > 0 ? (netProfit / rawOmset) * 100 : 0.0;
 
   /// Short formatted text for omset (e.g. "Rp 521,5 jt")
   String get shortOmset {

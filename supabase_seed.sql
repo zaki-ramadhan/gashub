@@ -57,19 +57,19 @@ insert into distribution_items (distribution_id, product_id, quantity, unit_pric
 ('d2222222-2222-2222-2222-222222222222', '11111111-1111-1111-1111-111111111111', 40, 19000, 760000);
 
 -- Catatan Piutang Toko Berkah Ibu
-insert into receivables (id, customer_id, source_distribution_id, original_amount, paid_amount, remaining_amount, due_date, status) values
-(gen_random_uuid(), 'c2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 760000, 380000, 380000, current_date + 3, 'partial');
+insert into receivables (id, customer_id, source_distribution_id, original_amount, paid_amount, remaining_amount, status) values
+(gen_random_uuid(), 'c2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 760000, 380000, 380000, 'partial');
 
--- Transaksi 3: Pangkalan Barokah H. Slamet (Belum Bayar / Lewat Tempo 4 hari)
+-- Transaksi 3: Pangkalan Barokah H. Slamet (Belum Bayar)
 insert into distributions (id, transaction_number, customer_id, business_date, subtotal, discount, total, amount_paid, payment_status, notes) values
-('d3333333-3333-3333-3333-333333333333', 'DST-202610-003', 'c3333333-3333-3333-3333-333333333333', current_date - 4, 1645000, 0, 1645000, 0, 'unpaid', 'Jatuh tempo 4 hari lalu, perlu ditagih');
+('d3333333-3333-3333-3333-333333333333', 'DST-202610-003', 'c3333333-3333-3333-3333-333333333333', current_date - 4, 1645000, 0, 1645000, 0, 'unpaid', 'Belum lunas, transaksi 4 hari lalu');
 insert into distribution_items (distribution_id, product_id, quantity, unit_price, subtotal) values
 ('d3333333-3333-3333-3333-333333333333', '11111111-1111-1111-1111-111111111111', 30, 19000, 570000),
 ('d3333333-3333-3333-3333-333333333333', '22222222-2222-2222-2222-222222222222', 5, 215000, 1075000);
 
 -- Catatan Piutang Pangkalan Barokah H. Slamet
-insert into receivables (id, customer_id, source_distribution_id, original_amount, paid_amount, remaining_amount, due_date, status) values
-(gen_random_uuid(), 'c3333333-3333-3333-3333-333333333333', 'd3333333-3333-3333-3333-333333333333', 1645000, 0, 1645000, current_date - 4, 'unpaid');
+insert into receivables (id, customer_id, source_distribution_id, original_amount, paid_amount, remaining_amount, status) values
+(gen_random_uuid(), 'c3333333-3333-3333-3333-333333333333', 'd3333333-3333-3333-3333-333333333333', 1645000, 0, 1645000, 'unpaid');
 
 -- Transaksi 4: Warung Kelontong Bu Siti (Lunas Tunai)
 insert into distributions (id, transaction_number, customer_id, business_date, subtotal, discount, total, amount_paid, payment_status, notes) values

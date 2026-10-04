@@ -5,6 +5,7 @@ export 'constants/app_colors.dart';
 export 'constants/app_dimensions.dart';
 export 'constants/supabase_constants.dart';
 export 'formatters/app_formatters.dart';
+export 'formatters/app_input_formatters.dart';
 export 'theme/app_theme.dart';
 export 'router/app_router.dart';
 export 'widgets/app_bottom_sheet.dart';

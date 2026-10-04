@@ -15,6 +15,7 @@ class AppButton extends StatelessWidget {
     this.isCompact = false,
     this.backgroundColor,
     this.textColor,
+    this.borderRadius,
   });
 
   final String text;
@@ -25,11 +26,13 @@ class AppButton extends StatelessWidget {
   final bool isCompact;
   final Color? backgroundColor;
   final Color? textColor;
+  final BorderRadius? borderRadius;
 
   @override
   Widget build(BuildContext context) {
     final height = isCompact ? AppDimensions.buttonHeightCompact : AppDimensions.buttonHeight;
     final fontSize = isCompact ? 13.0 : 14.0;
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(AppDimensions.radiusPill);
 
     final resolvedBg = isSecondary
         ? (backgroundColor ?? Colors.transparent)
@@ -71,14 +74,14 @@ class AppButton extends StatelessWidget {
       height: height,
       child: Material(
         color: isLoading ? resolvedBg.withValues(alpha: 0.75) : resolvedBg,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+        borderRadius: effectiveRadius,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+          borderRadius: effectiveRadius,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space20),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+              borderRadius: effectiveRadius,
               border: isSecondary ? Border.all(color: AppColors.border) : null,
             ),
             alignment: Alignment.center,

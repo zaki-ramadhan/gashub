@@ -51,7 +51,7 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
     final totalCost = _qty * _costPerUnit;
 
     return AppBottomSheet(
-      title: 'Catat Pasokan Gas Masuk',
+      title: 'Catat Pasokan Gas',
       bottomAction: AppButton(
         text: 'Simpan Pasokan',
         isLoading: _isLoading,
@@ -190,6 +190,7 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
           const SizedBox(height: 6),
           TextField(
             controller: _notesController,
+            inputFormatters: [AppInputFormatters.cleanText],
             decoration: const InputDecoration(
               hintText: 'Misal: DO-202610-098 / Truk Plat B',
             ),
@@ -208,7 +209,7 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
       height: 44,
       decoration: BoxDecoration(
         color: AppColors.canvas,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
         border: Border.all(color: AppColors.border),
       ),
       child: IconButton(

@@ -24,50 +24,47 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       'customer': 'Warung Barokah (Pak Slamet)',
       'phone': '0812-3456-7890',
       'remaining': 1250000,
-      'dueDate': DateTime.now().subtract(const Duration(days: 4)),
+      'date': DateTime.now().subtract(const Duration(days: 4)),
       'invoice': '#DST-202610-001',
-      'statusLabel': 'Lewat Tempo',
+      'statusLabel': 'Belum Bayar',
       'statusType': BadgeType.danger,
     },
     {
       'customer': 'Toko Berkah Ibu',
       'phone': '0813-9876-5432',
       'remaining': 380000,
-      'dueDate': DateTime.now().add(const Duration(days: 3)),
+      'date': DateTime.now().subtract(const Duration(days: 2)),
       'invoice': '#DST-202610-002',
-      'statusLabel': 'Mendekati',
+      'statusLabel': 'Cicilan Sebagian',
       'statusType': BadgeType.warning,
     },
     {
       'customer': 'Warung Kelontong Bu Siti',
       'phone': '0857-1122-3344',
       'remaining': 190000,
-      'dueDate': DateTime.now().add(const Duration(days: 1)),
+      'date': DateTime.now().subtract(const Duration(days: 1)),
       'invoice': '#DST-202610-004',
-      'statusLabel': 'Mendekati',
-      'statusType': BadgeType.warning,
+      'statusLabel': 'Belum Bayar',
+      'statusType': BadgeType.danger,
     },
     {
       'customer': 'RM Padang Sederhana',
       'phone': '0821-4455-6677',
       'remaining': 860000,
-      'dueDate': DateTime.now().add(const Duration(days: 7)),
+      'date': DateTime.now().subtract(const Duration(days: 5)),
       'invoice': '#DST-202610-005',
-      'statusLabel': 'Lancar',
-      'statusType': BadgeType.info,
+      'statusLabel': 'Belum Bayar',
+      'statusType': BadgeType.danger,
     },
   ];
 
   @override
   Widget build(BuildContext context) {
     final filtered = _receivablesData.where((item) {
-      if (_activeFilter == 'Lewat Tempo' && item['statusLabel'] != 'Lewat Tempo') {
+      if (_activeFilter == 'Belum Bayar' && item['statusLabel'] != 'Belum Bayar') {
         return false;
       }
-      if (_activeFilter == 'Mendekati' && item['statusLabel'] != 'Mendekati') {
-        return false;
-      }
-      if (_activeFilter == 'Lancar' && item['statusLabel'] != 'Lancar') {
+      if (_activeFilter == 'Cicilan Sebagian' && item['statusLabel'] != 'Cicilan Sebagian') {
         return false;
       }
 
@@ -86,7 +83,8 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Buku Piutang Warung'),
+        title: const Text('Catatan Utang'),
+        titleSpacing: 0,
       ),
       body: Column(
         children: [
@@ -113,7 +111,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Total tagihan piutang beredar',
+                        'Total utang belum lunas',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w400,
@@ -134,7 +132,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Dari ${filtered.length} transaksi warung mitra aktif',
+                    'Dari ${filtered.length} transaksi pelanggan aktif',
                     style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
@@ -146,14 +144,21 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space16),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TextField(
                   controller: _searchController,
+                  style: const TextStyle(fontSize: 14),
+                  inputFormatters: [AppInputFormatters.cleanText],
                   onChanged: (val) => setState(() => _searchQuery = val.trim()),
                   decoration: InputDecoration(
-                    hintText: 'Cari nama warung / no faktur...',
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                    prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
+                    hintText: 'Cari nama pelanggan...',
+                    hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
+                    prefixIcon: const Padding(
+                      padding: EdgeInsets.only(left: 12, right: 8),
+                      child: Icon(Icons.search, size: 20, color: AppColors.textMuted),
+                    ),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
@@ -164,29 +169,26 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                           )
                         : null,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.space12,
-                      vertical: AppDimensions.space8,
-                    ),
                     fillColor: Colors.white,
                   ),
                 ),
                 const SizedBox(height: AppDimensions.space10),
-                Row(
-                  children: [
-                    _buildFilterChip('Semua'),
-                    const SizedBox(width: AppDimensions.space8),
-                    _buildFilterChip('Lewat Tempo'),
-                    const SizedBox(width: AppDimensions.space8),
-                    _buildFilterChip('Mendekati'),
-                    const SizedBox(width: AppDimensions.space8),
-                    _buildFilterChip('Lancar'),
-                  ],
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('Semua'),
+                      const SizedBox(width: AppDimensions.space8),
+                      _buildFilterChip('Belum Bayar'),
+                      const SizedBox(width: AppDimensions.space8),
+                      _buildFilterChip('Cicilan Sebagian'),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: AppDimensions.space12),
+          const SizedBox(height: AppDimensions.space8),
 
           // 3. Daftar Pelanggan Berhutang
           Expanded(
@@ -203,16 +205,12 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                     separatorBuilder: (context, index) => const SizedBox(height: AppDimensions.space8),
                     itemBuilder: (context, index) {
                       final item = filtered[index];
-                      final dueDate = item['dueDate'] as DateTime;
-                      final diffDays = dueDate.difference(DateTime.now()).inDays;
-                      final dueString = diffDays < 0
-                          ? 'Telat ${diffDays.abs()} hari (Jatuh tempo: ${AppFormatters.date(dueDate)})'
-                          : 'Sisa $diffDays hari (Jatuh tempo: ${AppFormatters.date(dueDate)})';
+                      final date = item['date'] as DateTime;
 
                       return FlatTransactionRow(
                         title: item['customer'] as String,
-                        subtitle: '${item['invoice']} • $dueString',
-                        subtitleColor: diffDays < 0 ? AppColors.dangerText : AppColors.textMuted,
+                        subtitle: AppFormatters.date(date),
+                        subtitleColor: AppColors.textMuted,
                         amount: AppFormatters.currency(item['remaining'] as int),
                         amountColor: AppColors.dangerText,
                         statusLabel: item['statusLabel'] as String,
@@ -231,7 +229,6 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                             ),
                           ),
                         ),
-                        onTap: () => _showPaymentSheet(context, item),
                       );
                     },
                   ),
@@ -246,10 +243,10 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     return GestureDetector(
       onTap: () => setState(() => _activeFilter = label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.brandPrimary : Colors.white,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+          color: isSelected ? AppColors.brandPrimary : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
           border: Border.all(
             color: isSelected ? AppColors.brandPrimary : AppColors.border,
           ),
@@ -267,7 +264,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
   }
 
   void _showPaymentSheet(BuildContext context, Map<String, dynamic> item) {
-    final payController = TextEditingController(text: item['remaining'].toString());
+    final payController = TextEditingController(text: AppFormatters.number(item['remaining'] as int));
     bool isSaving = false;
 
     showModalBottomSheet(
@@ -279,12 +276,12 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return AppBottomSheet(
-              title: 'Pelunasan Piutang Warung',
+              title: 'Catat Bayar Utang',
               bottomAction: AppButton(
                 text: 'Simpan Pembayaran',
                 isLoading: isSaving,
                 onPressed: () async {
-                  final amount = int.tryParse(payController.text.replaceAll('.', '').replaceAll(',', '')) ?? 0;
+                  final amount = AppInputFormatters.parseNumber(payController.text);
                   if (amount <= 0) {
                     AppToast.warning(title: 'Nominal belum valid');
                     return;
@@ -325,7 +322,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Invoice: ${item['invoice']}',
+                        'Tanggal kirim: ${AppFormatters.date(item['date'] as DateTime)}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textMuted,
@@ -339,7 +336,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                   children: [
                     const Text(
                       'Sisa Piutang',
-                      style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                     ),
                     Text(
                       AppFormatters.currency(item['remaining'] as int),
@@ -369,6 +366,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
           TextField(
             controller: payController,
             keyboardType: TextInputType.number,
+            inputFormatters: [AppInputFormatters.thousands],
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -377,6 +375,11 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
             decoration: const InputDecoration(
               prefixText: 'Rp ',
               hintText: '0',
+              hintStyle: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
           const SizedBox(height: 8),

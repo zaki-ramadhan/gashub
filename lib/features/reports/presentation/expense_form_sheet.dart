@@ -23,14 +23,14 @@ class ExpenseFormSheet extends StatefulWidget {
 class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  String _selectedCategory = 'Bensin Armada';
+  String _selectedCategory = 'Bensin Motor/Tossa';
   bool _isLoading = false;
 
   static const List<String> _categories = [
-    'Bensin Armada',
-    'Gaji Harian',
-    'Konsumsi / Makan',
-    'Perawatan Kendaraan',
+    'Bensin Motor/Tossa',
+    'Upah Harian Pekerja',
+    'Uang Makan Pekerja',
+    'Tambal Ban / Servis',
     'Lain-lain',
   ];
 
@@ -42,8 +42,7 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
   }
 
   Future<void> _submit() async {
-    final rawAmount = _amountController.text.replaceAll('.', '').replaceAll(',', '');
-    final amount = int.tryParse(rawAmount) ?? 0;
+    final amount = AppInputFormatters.parseNumber(_amountController.text);
 
     if (amount <= 0) {
       AppToast.warning(title: 'Nominal belum diisi');
@@ -61,9 +60,9 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
   @override
   Widget build(BuildContext context) {
     return AppBottomSheet(
-      title: 'Catat Biaya Operasional',
+      title: 'Catat Pengeluaran',
       bottomAction: AppButton(
-        text: 'Simpan Biaya',
+        text: 'Simpan Pengeluaran',
         isLoading: _isLoading,
         onPressed: _submit,
       ),
@@ -91,7 +90,7 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.brandPrimary : Colors.white,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+                    borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
                     border: Border.all(
                       color: isSelected ? AppColors.brandPrimary : AppColors.border,
                     ),
@@ -123,6 +122,7 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
           TextField(
             controller: _amountController,
             keyboardType: TextInputType.number,
+            inputFormatters: [AppInputFormatters.thousands],
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -131,6 +131,11 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
             decoration: const InputDecoration(
               prefixText: 'Rp ',
               hintText: '0',
+              hintStyle: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w400,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
           const SizedBox(height: AppDimensions.space16),
@@ -147,6 +152,7 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
           const SizedBox(height: 6),
           TextField(
             controller: _noteController,
+            inputFormatters: [AppInputFormatters.cleanText],
             decoration: const InputDecoration(
               hintText: 'Contoh: Isi solar truk pick up untuk kirim pagi',
             ),

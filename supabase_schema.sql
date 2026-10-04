@@ -85,7 +85,6 @@ create table if not exists receivables (
     original_amount bigint not null check (original_amount >= 0),
     paid_amount bigint not null default 0 check (paid_amount >= 0),
     remaining_amount bigint not null check (remaining_amount >= 0),
-    due_date date,
     status text not null default 'unpaid',
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
