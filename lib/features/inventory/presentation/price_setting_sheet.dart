@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../data/inventory_repository.dart';
 
 /// Modal bottom sheet for changing LPG 3kg selling and purchase prices.
 class PriceSettingSheet extends StatefulWidget {
@@ -20,7 +21,7 @@ class PriceSettingSheet extends StatefulWidget {
 }
 
 class _PriceSettingSheetState extends State<PriceSettingSheet> {
-  final _sellingPriceController = TextEditingController(text: AppFormatters.number(19000));
+  late final TextEditingController _sellingPriceController;
   final _purchasePriceController = TextEditingController(text: AppFormatters.number(15750));
 
   bool _isLoading = false;
@@ -28,6 +29,15 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
   int get _sellingPrice => AppInputFormatters.parseNumber(_sellingPriceController.text);
   int get _purchasePrice => AppInputFormatters.parseNumber(_purchasePriceController.text);
   int get _margin => _sellingPrice - _purchasePrice;
+
+  @override
+  void initState() {
+    super.initState();
+    final livePrice = InventoryRepository.instance.sellingPrice;
+    _sellingPriceController = TextEditingController(
+      text: AppFormatters.number(livePrice > 0 ? livePrice : 19000),
+    );
+  }
 
   @override
   void dispose() {
@@ -43,7 +53,7 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
+    await InventoryRepository.instance.updateSellingPrice(_sellingPrice);
     if (!mounted) return;
 
     Navigator.of(context, rootNavigator: true).pop();

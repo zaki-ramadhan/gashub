@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../data/inventory_repository.dart';
 
 /// Modal bottom sheet for recording incoming LPG 3kg supply from Pertamina / Agen.
 /// Wrapped inside reusable [AppBottomSheet].
@@ -39,11 +40,24 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
+    try {
+      final reason = _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
+          : 'Penerimaan pasokan SPPBE';
+      await InventoryRepository.instance.recordRestock(
+        quantity: _qty,
+        reason: reason,
+      );
+      if (!mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pop();
-    AppToast.success(title: 'Pasokan berhasil disimpan');
+      Navigator.of(context, rootNavigator: true).pop();
+      AppToast.success(title: 'Pasokan berhasil disimpan');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.error(title: 'Gagal menyimpan pasokan: $e');
+      }
+    }
   }
 
   @override
