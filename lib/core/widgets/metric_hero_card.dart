@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import '../formatters/app_formatters.dart';
@@ -61,19 +62,21 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    _isVisible = !_isVisible;
-                  });
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(4.0),
-                  child: Icon(
-                    _isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                    size: 17,
-                    color: AppColors.textPrimary,
+              Skeleton.ignore(
+                child: InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isVisible = !_isVisible;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4.0),
+                    child: Icon(
+                      _isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                      size: 17,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                 ),
               ),
@@ -139,16 +142,19 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: AppColors.brandAccent,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_downward,
-                              size: 11,
-                              color: AppColors.brandPrimary,
+                          Skeleton.replace(
+                            replacement: const Bone.circle(size: 17),
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: AppColors.brandAccent,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.arrow_downward,
+                                size: 11,
+                                color: AppColors.brandPrimary,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -193,16 +199,19 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFFFEE2E2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.arrow_upward,
-                              size: 11,
-                              color: AppColors.dangerText,
+                          Skeleton.replace(
+                            replacement: const Bone.circle(size: 17),
+                            child: Container(
+                              padding: const EdgeInsets.all(3),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFFEE2E2),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.arrow_upward,
+                                size: 11,
+                                color: AppColors.dangerText,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -249,15 +258,18 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
       borderRadius: BorderRadius.circular(30),
       child: Column(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border, width: 1.0),
+          Skeleton.replace(
+            replacement: const Bone.circle(size: 48),
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.canvas,
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.border, width: 1.0),
+              ),
+              child: Icon(icon, size: 22, color: AppColors.brandPrimary),
             ),
-            child: Icon(icon, size: 22, color: AppColors.brandPrimary),
           ),
           const SizedBox(height: 6),
           Text(

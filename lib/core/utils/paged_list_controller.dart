@@ -72,9 +72,6 @@ class PagedListController<T> extends ChangeNotifier {
         // preserve current state on error
       }
     } else {
-      // Smooth latency simulation for in-memory / cached dataset
-      await Future.delayed(const Duration(milliseconds: 350));
-      if (_isDisposed) return;
       _visibleCount = (_visibleCount + pageSize).clamp(0, _allItems.length);
     }
 

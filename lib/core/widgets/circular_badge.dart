@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 
 /// Circular pastel badge icon for product categories and status markers.
@@ -18,18 +19,21 @@ class CircularBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: Icon(
-        icon,
-        size: size * 0.52,
-        color: iconColor,
+    return Skeleton.replace(
+      replacement: Bone.circle(size: size),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          shape: BoxShape.circle,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          icon,
+          size: size * 0.52,
+          color: iconColor,
+        ),
       ),
     );
   }

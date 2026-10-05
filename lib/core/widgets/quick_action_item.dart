@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 
@@ -33,18 +34,21 @@ class QuickActionItem extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: backgroundColor ?? Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border, width: 1),
-              ),
-              child: Icon(
-                icon,
-                size: 22,
-                color: iconColor ?? AppColors.brandPrimary,
+            Skeleton.replace(
+              replacement: const Bone.circle(size: 48),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: backgroundColor ?? Colors.white,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 1),
+                ),
+                child: Icon(
+                  icon,
+                  size: 22,
+                  color: iconColor ?? AppColors.brandPrimary,
+                ),
               ),
             ),
             const SizedBox(height: AppDimensions.space8),

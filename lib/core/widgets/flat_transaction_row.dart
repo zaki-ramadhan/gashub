@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import 'status_badge.dart';
@@ -50,18 +51,21 @@ class FlatTransactionRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (icon != null) ...[
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: iconBg ?? AppColors.canvas,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border, width: 1.0),
-              ),
-              child: Icon(
-                icon,
-                size: 18,
-                color: iconColor ?? AppColors.brandPrimary,
+            Skeleton.replace(
+              replacement: const Bone.circle(size: 38),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: iconBg ?? AppColors.canvas,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.border, width: 1.0),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: iconColor ?? AppColors.brandPrimary,
+                ),
               ),
             ),
             const SizedBox(width: AppDimensions.space12),

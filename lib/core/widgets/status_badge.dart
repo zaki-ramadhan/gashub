@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 
@@ -25,21 +26,28 @@ class StatusBadge extends StatelessWidget {
       BadgeType.info => (AppColors.infoBg, AppColors.infoText),
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space8,
-        vertical: AppDimensions.space4,
-      ),
-      decoration: BoxDecoration(
-        color: bg,
+    return Skeleton.replace(
+      replacement: Bone(
+        width: 58,
+        height: 22,
         borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
       ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: fg,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimensions.space8,
+          vertical: AppDimensions.space4,
+        ),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: fg,
+          ),
         ),
       ),
     );

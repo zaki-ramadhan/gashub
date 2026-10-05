@@ -44,4 +44,19 @@ abstract final class AppFormatters {
   static String time(DateTime dateTime) {
     return '${_timeFormat.format(dateTime)} WIB';
   }
+
+  /// Formats date with relative day header (Hari Ini, Kemarin, or Hari, d MMM yyyy)
+  static String relativeDateHeader(DateTime dateTime) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final target = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    if (target == today) {
+      return 'Hari Ini, ${date(dateTime)}';
+    } else if (target == today.subtract(const Duration(days: 1))) {
+      return 'Kemarin, ${date(dateTime)}';
+    } else {
+      return '${dayOfWeek(dateTime)}, ${date(dateTime)}';
+    }
+  }
 }
