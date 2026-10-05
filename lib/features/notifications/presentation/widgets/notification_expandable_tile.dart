@@ -4,30 +4,24 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/formatters/app_formatters.dart';
 import '../../domain/notification_models.dart';
 
-class NotificationExpandableTile extends StatefulWidget {
+class NotificationExpandableTile extends StatelessWidget {
   const NotificationExpandableTile({
     super.key,
     required this.item,
+    required this.isExpanded,
+    required this.onToggle,
     required this.onAction,
     required this.onMarkRead,
   });
 
   final NotificationItem item;
+  final bool isExpanded;
+  final VoidCallback onToggle;
   final VoidCallback onAction;
   final VoidCallback onMarkRead;
 
   @override
-  State<NotificationExpandableTile> createState() =>
-      _NotificationExpandableTileState();
-}
-
-class _NotificationExpandableTileState
-    extends State<NotificationExpandableTile> {
-  bool _isExpanded = false;
-
-  @override
   Widget build(BuildContext context) {
-    final item = widget.item;
     final isUnread = !item.isRead;
     final isDebt = item.type == NotificationType.debt;
 
@@ -51,14 +45,14 @@ class _NotificationExpandableTileState
         isDebt ? Icons.receipt_long_outlined : Icons.local_shipping_outlined;
 
     // Opacity: full 1.0 for unread or expanded, 0.78 for collapsed read items (sharp & high contrast)
-    final double contentOpacity = (isUnread || _isExpanded) ? 1.0 : 0.78;
+    final double contentOpacity = (isUnread || isExpanded) ? 1.0 : 0.78;
 
     return Material(
       color: Colors.white,
       child: InkWell(
         onTap: () {
-          setState(() => _isExpanded = !_isExpanded);
-          if (isUnread) widget.onMarkRead();
+          onToggle();
+          if (isUnread) onMarkRead();
         },
         child: AnimatedOpacity(
           opacity: contentOpacity,
@@ -95,8 +89,8 @@ class _NotificationExpandableTileState
                         ),
                         if (isUnread)
                           Positioned(
-                            top: -1,
-                            right: -1,
+                            top: 0,
+                            right: 0,
                             child: Container(
                               width: 9,
                               height: 9,
@@ -123,7 +117,7 @@ class _NotificationExpandableTileState
                             item.title,
                             style: const TextStyle(
                               fontSize: 14,
-                              fontWeight: FontWeight.w500,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.textPrimary,
                             ),
                             maxLines: 2,
@@ -135,7 +129,7 @@ class _NotificationExpandableTileState
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w400,
-                              color: AppColors.textMuted,
+                              color: AppColors.textPrimary,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -143,109 +137,125 @@ class _NotificationExpandableTileState
                         ],
                       ),
                     ),
-                  const SizedBox(width: AppDimensions.space8),
+                    const SizedBox(width: AppDimensions.space8),
 
-                  // Animated Chevron Toggle
-                  AnimatedRotation(
-                    turns: _isExpanded ? 0.5 : 0.0,
-                    duration: const Duration(milliseconds: 180),
-                    child: const Icon(
-                      Icons.keyboard_arrow_down,
-                      size: 20,
-                      color: AppColors.textMuted,
+                    // Animated Chevron Toggle
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      child: const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 20,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
 
-              // Expanded Content Area (Toggled)
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: Padding(
-                  padding: const EdgeInsets.only(
-                    left: 48, // 36px icon + 12px gap
-                    top: AppDimensions.space10,
-                    bottom: AppDimensions.space4,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                // Expanded Content Area (Toggled with dividing line)
+                AnimatedCrossFade(
+                  firstChild: const SizedBox.shrink(),
+                  secondChild: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Natural sentence message
-                      Text(
-                        item.message,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          height: 1.45,
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w400,
+                      const Padding(
+                        padding: EdgeInsets.only(
+                          left: 48, // 36px icon + 12px gap, aligns with message text
+                          top: AppDimensions.space10,
+                        ),
+                        child: Divider(
+                          height: 1,
+                          thickness: 1,
+                          color: AppColors.border,
                         ),
                       ),
-                      const SizedBox(height: AppDimensions.space12),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 48, // 36px icon + 12px gap
+                          top: AppDimensions.space10,
+                          bottom: AppDimensions.space4,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Natural sentence message
+                            Text(
+                              item.message,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                height: 1.45,
+                                color: AppColors.textPrimary,
+                                fontWeight: FontWeight.w400,
+                              ),
+                            ),
+                            const SizedBox(height: AppDimensions.space12),
 
-                      // Action Button Row
-                      Row(
-                        children: [
-                          InkWell(
-                            onTap: widget.onAction,
-                            borderRadius: BorderRadius.circular(
-                              AppDimensions.radiusControl,
-                            ),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.brandPrimary,
-                                borderRadius: BorderRadius.circular(
-                                  AppDimensions.radiusControl,
-                                ),
-                              ),
-                              child: Text(
-                                item.actionText,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const Spacer(),
-                          if (isUnread)
-                            InkWell(
-                              onTap: widget.onMarkRead,
-                              borderRadius: BorderRadius.circular(4),
-                              child: const Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 6,
-                                ),
-                                child: Text(
-                                  'Tandai sudah dibaca',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.textMuted,
+                            // Action Button Row
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: onAction,
+                                  borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusControl,
+                                  ),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.brandPrimary,
+                                      borderRadius: BorderRadius.circular(
+                                        AppDimensions.radiusControl,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      item.actionText,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.white,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const Spacer(),
+                                if (isUnread)
+                                  InkWell(
+                                    onTap: onMarkRead,
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 6,
+                                      ),
+                                      child: Text(
+                                        'Tandai sudah dibaca',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: AppColors.textMuted,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
+                  crossFadeState: isExpanded
+                      ? CrossFadeState.showSecond
+                      : CrossFadeState.showFirst,
+                  duration: const Duration(milliseconds: 180),
                 ),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 180),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }

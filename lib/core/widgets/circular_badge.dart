@@ -31,7 +31,7 @@ class CircularBadge extends StatelessWidget {
         alignment: Alignment.center,
         child: Icon(
           icon,
-          size: size * 0.52,
+          size: size * 0.58,
           color: iconColor,
         ),
       ),

@@ -79,7 +79,7 @@ class DashboardQuickTools extends StatelessWidget {
                     shape: BoxShape.circle,
                     border: Border.all(color: AppColors.border),
                   ),
-                  child: Icon(icon, size: 20, color: AppColors.textPrimary),
+                  child: Icon(icon, size: 24, color: AppColors.textPrimary),
                 ),
               ),
               const SizedBox(height: 6),

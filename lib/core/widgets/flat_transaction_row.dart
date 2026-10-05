@@ -22,6 +22,7 @@ class FlatTransactionRow extends StatelessWidget {
     this.subtitleColor,
     this.trailingAction,
     this.onTap,
+    this.iconSize = 22.0,
   });
 
   final String title;
@@ -37,6 +38,7 @@ class FlatTransactionRow extends StatelessWidget {
   final Color? subtitleColor;
   final Widget? trailingAction;
   final VoidCallback? onTap;
+  final double iconSize;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +65,7 @@ class FlatTransactionRow extends StatelessWidget {
                 ),
                 child: Icon(
                   icon,
-                  size: 18,
+                  size: iconSize,
                   color: iconColor ?? AppColors.brandPrimary,
                 ),
               ),

@@ -16,6 +16,7 @@ class NotificationsRepository {
       ValueNotifier<List<NotificationItem>>([]);
 
   final ValueNotifier<int> unreadCountNotifier = ValueNotifier<int>(0);
+  final ValueNotifier<int> readCountNotifier = ValueNotifier<int>(0);
 
   final ValueNotifier<NotificationSettings> settingsNotifier =
       ValueNotifier<NotificationSettings>(const NotificationSettings());
@@ -23,6 +24,7 @@ class NotificationsRepository {
   final ValueNotifier<bool> isLoadingNotifier = ValueNotifier<bool>(false);
 
   Set<String> _readIds = {};
+  Set<String> _clearedIds = {};
   List<ReceivableModel> _rawReceivables = [];
 
   List<ReceivableModel> get rawReceivables => _rawReceivables;
@@ -39,8 +41,10 @@ class NotificationsRepository {
       final restockMinute = prefs.getInt('notif_restock_minute') ?? prefs.getInt('notif_h0_minute') ?? 0;
       final debtDueDays = prefs.getInt('notif_debt_due_days') ?? 7;
       final readList = prefs.getStringList('notif_read_ids') ?? [];
+      final clearedList = prefs.getStringList('notif_cleared_ids') ?? [];
 
       _readIds = readList.toSet();
+      _clearedIds = clearedList.toSet();
       settingsNotifier.value = NotificationSettings(
         restockTime: TimeOfDay(hour: restockHour, minute: restockMinute),
         debtDueDays: debtDueDays,
@@ -66,7 +70,7 @@ class NotificationsRepository {
   Future<void> markAsRead(String id) async {
     _readIds.add(id);
     await _saveReadIds();
-    _recalculateUnreadCount();
+    _recalculateCounts();
   }
 
   Future<void> markAllAsRead() async {
@@ -74,7 +78,29 @@ class NotificationsRepository {
       _readIds.add(item.id);
     }
     await _saveReadIds();
-    _recalculateUnreadCount();
+    _recalculateCounts();
+  }
+
+  Future<void> clearReadNotifications() async {
+    final readItems =
+        notificationsNotifier.value.where((n) => n.isRead).toList();
+    for (final item in readItems) {
+      _clearedIds.add(item.id);
+    }
+    await _saveClearedIds();
+    notificationsNotifier.value = notificationsNotifier.value
+        .where((n) => !_clearedIds.contains(n.id))
+        .toList();
+    _recalculateCounts();
+  }
+
+  Future<void> _saveClearedIds() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('notif_cleared_ids', _clearedIds.toList());
+    } catch (e) {
+      debugPrint('Error saving cleared notification IDs: $e');
+    }
   }
 
   Future<void> _saveReadIds() async {
@@ -90,9 +116,10 @@ class NotificationsRepository {
     }
   }
 
-  void _recalculateUnreadCount() {
-    final count = notificationsNotifier.value.where((n) => !n.isRead).length;
-    unreadCountNotifier.value = count;
+  void _recalculateCounts() {
+    final list = notificationsNotifier.value;
+    unreadCountNotifier.value = list.where((n) => !n.isRead).length;
+    readCountNotifier.value = list.where((n) => n.isRead).length;
   }
 
   Future<void> fetchNotifications() async {
@@ -216,16 +243,20 @@ class NotificationsRepository {
         debugPrint('Error fetching restock schedules for notifications: $e');
       }
 
+      // Filter out cleared items
+      final activeItems =
+          items.where((item) => !_clearedIds.contains(item.id)).toList();
+
       // Sort: unread first, then by date descending
-      items.sort((a, b) {
+      activeItems.sort((a, b) {
         if (a.isRead != b.isRead) {
           return a.isRead ? 1 : -1;
         }
         return b.dateTime.compareTo(a.dateTime);
       });
 
-      notificationsNotifier.value = items;
-      _recalculateUnreadCount();
+      notificationsNotifier.value = activeItems;
+      _recalculateCounts();
     } finally {
       isLoadingNotifier.value = false;
     }

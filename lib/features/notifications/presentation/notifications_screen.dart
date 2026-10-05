@@ -16,13 +16,20 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  String _selectedCategory = 'Semua';
+  static const String _catAll = 'semua';
+  static const String _catUnread = 'unread';
+  static const String _catDebt = 'debt';
+  static const String _catRestock = 'restock';
 
   static const List<String> _categoryOptions = [
-    'Semua',
-    'Tagihan warung',
-    'Jadwal muat',
+    _catAll,
+    _catUnread,
+    _catDebt,
+    _catRestock,
   ];
+
+  String _selectedCategory = _catAll;
+  String? _expandedId;
 
   @override
   void initState() {
@@ -35,17 +42,56 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Notifikasi'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Notifikasi'),
+            const SizedBox(width: AppDimensions.space8),
+            ValueListenableBuilder<int>(
+              valueListenable:
+                  NotificationsRepository.instance.unreadCountNotifier,
+              builder: (context, unreadCount, _) {
+                if (unreadCount == 0) return const SizedBox.shrink();
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.brandPrimary,
+                    borderRadius:
+                        BorderRadius.circular(AppDimensions.radiusPill),
+                  ),
+                  child: Text(
+                    '$unreadCount baru',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         titleSpacing: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.tune_outlined, size: 20),
-            tooltip: 'Atur waktu pengingat',
-            onPressed: () {
-              NotificationSettingsSheet.show(
-                context: context,
-                initialSettings:
-                    NotificationsRepository.instance.settingsNotifier.value,
+          ValueListenableBuilder<int>(
+            valueListenable:
+                NotificationsRepository.instance.unreadCountNotifier,
+            builder: (context, unreadCount, _) {
+              if (unreadCount == 0) return const SizedBox.shrink();
+              return TextButton(
+                onPressed: () {
+                  NotificationsRepository.instance.markAllAsRead();
+                },
+                child: const Text(
+                  'Tandai dibaca',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.brandPrimary,
+                  ),
+                ),
               );
             },
           ),
@@ -55,8 +101,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Subheader: Schedule notice, Unread status & Filter chips (All unified)
-          Padding(
+          // Subheader: Schedule banner & filter chips in crisp white container
+          Container(
+            color: Colors.white,
             padding: const EdgeInsets.fromLTRB(
               AppDimensions.space16,
               AppDimensions.space10,
@@ -70,66 +117,39 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   onEdit: () {
                     NotificationSettingsSheet.show(
                       context: context,
-                      initialSettings:
-                          NotificationsRepository.instance.settingsNotifier.value,
+                      initialSettings: NotificationsRepository
+                          .instance.settingsNotifier.value,
                     );
                   },
                 ),
-                const SizedBox(height: AppDimensions.space8),
-                Row(
-                  children: [
-                    ValueListenableBuilder<int>(
-                      valueListenable:
-                          NotificationsRepository.instance.unreadCountNotifier,
-                      builder: (context, unreadCount, _) {
-                        return Text(
-                          unreadCount > 0
-                              ? '$unreadCount pengingat belum dibaca'
-                              : 'Semua pengingat telah dibaca',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.textMuted,
-                          ),
-                        );
+                const SizedBox(height: AppDimensions.space12),
+                ValueListenableBuilder<int>(
+                  valueListenable:
+                      NotificationsRepository.instance.unreadCountNotifier,
+                  builder: (context, unreadCount, _) {
+                    return AppFilterChips<String>(
+                      options: _categoryOptions,
+                      selected: _selectedCategory,
+                      labelBuilder: (cat) {
+                        switch (cat) {
+                          case _catAll:
+                            return 'Semua';
+                          case _catUnread:
+                            return unreadCount > 0
+                                ? 'Belum dibaca ($unreadCount)'
+                                : 'Belum dibaca';
+                          case _catDebt:
+                            return 'Tagihan warung';
+                          case _catRestock:
+                            return 'Jadwal muat';
+                          default:
+                            return cat;
+                        }
                       },
-                    ),
-                    const Spacer(),
-                    ValueListenableBuilder<int>(
-                      valueListenable:
-                          NotificationsRepository.instance.unreadCountNotifier,
-                      builder: (context, unreadCount, _) {
-                        if (unreadCount == 0) return const SizedBox.shrink();
-                        return InkWell(
-                          onTap: () {
-                            NotificationsRepository.instance.markAllAsRead();
-                          },
-                          borderRadius: BorderRadius.circular(4),
-                          child: const Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2,
-                            ),
-                            child: Text(
-                              'Tandai semua dibaca',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.brandPrimary,
-                              ),
-                            ),
-                          ),
-                        );
+                      onSelected: (cat) {
+                        setState(() => _selectedCategory = cat);
                       },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppDimensions.space10),
-                AppFilterChips<String>(
-                  options: _categoryOptions,
-                  selected: _selectedCategory,
-                  onSelected: (cat) {
-                    setState(() => _selectedCategory = cat);
+                    );
                   },
                 ),
               ],
@@ -138,7 +158,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           const Divider(height: 1, thickness: 1, color: AppColors.border),
 
-          // Main List Area: Seamless full-width list united in one continuous container
+          // Main List Area: Edge-to-edge flat divided list grouped by date
           Expanded(
             child: RefreshIndicator(
               color: AppColors.brandPrimary,
@@ -161,10 +181,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       }
 
                       final filteredItems = allItems.where((item) {
-                        if (_selectedCategory == 'Tagihan warung') {
+                        if (_selectedCategory == _catUnread) {
+                          return !item.isRead;
+                        }
+                        if (_selectedCategory == _catDebt) {
                           return item.type == NotificationType.debt;
                         }
-                        if (_selectedCategory == 'Jadwal muat') {
+                        if (_selectedCategory == _catRestock) {
                           return item.type == NotificationType.restock;
                         }
                         return true;
@@ -174,26 +197,65 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         return _buildEmptyState();
                       }
 
-                      return ListView.separated(
+                      final grouped = groupItemsByDate<NotificationItem>(
+                        filteredItems,
+                        (item) => item.dateTime,
+                      );
+                      final sortedDates = grouped.keys.toList();
+
+                      return ListView.builder(
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: const EdgeInsets.only(
-                          bottom: AppDimensions.space32,
+                          bottom: AppDimensions.space24,
                         ),
-                        itemCount: filteredItems.length,
-                        separatorBuilder: (context, index) => const Divider(
-                          height: 1,
-                          thickness: 1,
-                          color: AppColors.border,
-                        ),
+                        itemCount: sortedDates.length,
                         itemBuilder: (context, index) {
-                          final item = filteredItems[index];
-                          return NotificationExpandableTile(
-                            item: item,
-                            onAction: () => _handleItemAction(item),
-                            onMarkRead: () {
-                              NotificationsRepository.instance
-                                  .markAsRead(item.id);
-                            },
+                          final dateKey = sortedDates[index];
+                          final itemsForDay = grouped[dateKey]!;
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppDimensions.space16,
+                                ),
+                                child: DateSectionHeader(
+                                  title:
+                                      AppFormatters.relativeDateHeader(dateKey),
+                                  topPadding: index == 0
+                                      ? AppDimensions.space12
+                                      : AppDimensions.space20,
+                                ),
+                              ),
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: AppColors.border,
+                              ),
+                              for (int i = 0;
+                                  i < itemsForDay.length;
+                                  i++) ...[
+                                NotificationExpandableTile(
+                                  item: itemsForDay[i],
+                                  isExpanded: _expandedId == itemsForDay[i].id,
+                                  onToggle: () {
+                                    setState(() {
+                                      _expandedId =
+                                          (_expandedId == itemsForDay[i].id)
+                                              ? null
+                                              : itemsForDay[i].id;
+                                    });
+                                  },
+                                  onAction: () =>
+                                      _handleItemAction(itemsForDay[i]),
+                                  onMarkRead: () {
+                                    NotificationsRepository.instance
+                                        .markAsRead(itemsForDay[i].id);
+                                  },
+                                ),
+                              ],
+                            ],
                           );
                         },
                       );
@@ -204,6 +266,38 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
         ],
+      ),
+      // Fixed bottom bar: Unaffected by scroll, visible only when read notifications exist
+      bottomNavigationBar: ValueListenableBuilder<int>(
+        valueListenable: NotificationsRepository.instance.readCountNotifier,
+        builder: (context, readCount, _) {
+          if (readCount == 0) return const SizedBox.shrink();
+          return Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: AppColors.border, width: 1),
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(
+              AppDimensions.space16,
+              AppDimensions.space12,
+              AppDimensions.space16,
+              AppDimensions.space12,
+            ),
+            child: SafeArea(
+              top: false,
+              child: AppButton(
+                text: 'Bersihkan $readCount notifikasi terbaca',
+                isSecondary: true,
+                borderRadius:
+                    BorderRadius.circular(AppDimensions.radiusControl),
+                textColor: AppColors.textPrimary,
+                onPressed: _confirmClearRead,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -223,6 +317,79 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       }
     } else if (item.type == NotificationType.restock) {
       context.push('/inventory');
+    }
+  }
+
+  Future<void> _confirmClearRead() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+        ),
+        title: const Text(
+          'Bersihkan notifikasi',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        content: const Text(
+          'Hanya notifikasi yang sudah dibaca yang akan dihapus dari daftar.',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.textMuted,
+            height: 1.4,
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textMuted,
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(AppDimensions.radiusControl),
+              ),
+            ),
+            child: const Text(
+              'Batal',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.brandPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(AppDimensions.radiusControl),
+              ),
+            ),
+            child: const Text(
+              'Bersihkan',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await NotificationsRepository.instance.clearReadNotifications();
+      if (mounted) {
+        AppToast.success(title: 'Notifikasi terbaca berhasil dibersihkan');
+      }
     }
   }
 
@@ -257,9 +424,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: AppDimensions.space8),
             Text(
-              _selectedCategory == 'Semua'
+              _selectedCategory == _catAll
                   ? 'Semua jadwal muat gas dan tagihan warung telah ditangani dengan baik.'
-                  : 'Tidak ada pengingat aktif pada kategori $_selectedCategory saat ini.',
+                  : _selectedCategory == _catUnread
+                      ? 'Tidak ada pengingat yang belum dibaca saat ini.'
+                      : 'Tidak ada pengingat aktif pada kategori ini saat ini.',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 13,
