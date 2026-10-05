@@ -107,144 +107,170 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
             final totalDebtors = allCustomers.where((c) => c.hasDebt).length;
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            return CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
                 // 1. Search Bar & Status Counter
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _searchController,
-                        style: const TextStyle(fontSize: 14),
-                        onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                        decoration: InputDecoration(
-                          hintText: 'Cari nama pelanggan...',
-                          hintStyle: const TextStyle(fontSize: 14, color: AppColors.textMuted),
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(left: 12, right: 8),
-                            child: Icon(Icons.search, size: 20, color: AppColors.textMuted),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: AppDimensions.space16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TextField(
+                          controller: _searchController,
+                          style: const TextStyle(fontSize: 14),
+                          onChanged: (val) =>
+                              setState(() => _searchQuery = val.trim()),
+                          decoration: InputDecoration(
+                            hintText: 'Cari nama pelanggan...',
+                            hintStyle: const TextStyle(
+                                fontSize: 14, color: AppColors.textMuted),
+                            prefixIcon: const Padding(
+                              padding: EdgeInsets.only(left: 12, right: 8),
+                              child: Icon(Icons.search,
+                                  size: 20, color: AppColors.textMuted),
+                            ),
+                            prefixIconConstraints: const BoxConstraints(
+                                minWidth: 40, minHeight: 40),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear,
+                                        size: 18, color: AppColors.textMuted),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() => _searchQuery = '');
+                                    },
+                                  )
+                                : null,
+                            isDense: true,
+                            fillColor: Colors.white,
                           ),
-                          prefixIconConstraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear, size: 18, color: AppColors.textMuted),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                          fillColor: Colors.white,
                         ),
-                      ),
-                      const SizedBox(height: AppDimensions.space10),
+                        const SizedBox(height: AppDimensions.space10),
 
-                      // Filter Chips & Counter
-                      Row(
-                        children: [
-                          Expanded(
-                            child: AppFilterChips<String>(
-                              options: const ['Semua', 'Ada Utang', 'Lunas'],
-                              selected: _activeFilter,
-                              onSelected: (filter) => setState(() => _activeFilter = filter),
-                            ),
-                          ),
-                          AppSkeletonizer(
-                            isLoading: _isLoading,
-                            child: Text(
-                              '$totalDebtors ada utang',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textMuted,
+                        // Filter Chips & Counter
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppFilterChips<String>(
+                                options: const ['Semua', 'Ada Utang', 'Lunas'],
+                                selected: _activeFilter,
+                                onSelected: (filter) =>
+                                    setState(() => _activeFilter = filter),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: AppDimensions.space8),
-
-                // 2. Daftar Warung
-                Expanded(
-                  child: filtered.isEmpty && !_isLoading
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.person_outline,
-                                size: 40,
-                                color: AppColors.textMuted,
-                              ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                'Tidak ada pelanggan yang sesuai',
-                                style: TextStyle(
-                                  fontSize: 14,
+                            AppSkeletonizer(
+                              isLoading: _isLoading,
+                              child: Text(
+                                '$totalDebtors ada utang',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
                                   color: AppColors.textMuted,
                                 ),
                               ),
-                              if (_searchQuery.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                TextButton(
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() => _searchQuery = '');
-                                  },
-                                  child: const Text('Reset pencarian'),
-                                ),
-                              ],
-                            ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppDimensions.space8),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 2. Daftar Warung / Pelanggan / Empty State
+                if (filtered.isEmpty && !_isLoading)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.person_outline,
+                            size: 40,
+                            color: AppColors.textMuted,
                           ),
-                        )
-                      : AppSkeletonizer(
-                          isLoading: _isLoading,
-                          child: Builder(
-                            builder: (context) {
-                              final displayList = (_isLoading && filtered.isEmpty)
-                                  ? _placeholderCustomers
-                                  : filtered;
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Tidak ada pelanggan yang sesuai',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          if (_searchQuery.isNotEmpty) ...[
+                            const SizedBox(height: 4),
+                            TextButton(
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _searchQuery = '');
+                              },
+                              child: const Text('Reset pencarian'),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  AppSkeletonizer.sliver(
+                    isLoading: _isLoading,
+                    child: Builder(
+                      builder: (context) {
+                        final displayList = (_isLoading && filtered.isEmpty)
+                            ? _placeholderCustomers
+                            : filtered;
 
-                              return ListView.separated(
-                                physics: const AlwaysScrollableScrollPhysics(),
-                                padding: const EdgeInsets.all(AppDimensions.space16),
-                                itemCount: displayList.length,
-                                separatorBuilder: (context, index) =>
-                                    const SizedBox(height: AppDimensions.space8),
-                                itemBuilder: (context, index) {
-                                  final customer = displayList[index];
+                        return SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppDimensions.space16,
+                            AppDimensions.space8,
+                            AppDimensions.space16,
+                            96,
+                          ),
+                          sliver: SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final customer = displayList[index];
 
-                                  return FlatTransactionRow(
+                                return Padding(
+                                  padding: const EdgeInsets.only(
+                                      bottom: AppDimensions.space8),
+                                  child: FlatTransactionRow(
                                     title: customer.name,
                                     subtitle: customer.lastOrderDate != null
                                         ? 'Kirim terakhir: ${AppFormatters.date(customer.lastOrderDate!)}'
                                         : 'Belum ada riwayat kirim',
                                     amount: customer.hasDebt
-                                        ? AppFormatters.currency(customer.activeDebt)
+                                        ? AppFormatters.currency(
+                                            customer.activeDebt)
                                         : '',
                                     amountColor: AppColors.dangerText,
-                                    statusLabel: customer.hasDebt ? 'Ada Utang' : null,
-                                    statusType: customer.hasDebt ? BadgeType.danger : null,
+                                    statusLabel:
+                                        customer.hasDebt ? 'Ada Utang' : null,
+                                    statusType: customer.hasDebt
+                                        ? BadgeType.danger
+                                        : null,
                                     icon: Icons.person_outline,
                                     iconColor: AppColors.brandPrimary,
                                     iconBg: AppColors.canvas,
                                     onTap: _isLoading
                                         ? null
-                                        : () => CustomerDetailSheet.show(context, customer),
-                                  );
-                                },
-                              );
-                            },
+                                        : () => CustomerDetailSheet.show(
+                                            context, customer),
+                                  ),
+                                );
+                              },
+                              childCount: displayList.length,
+                            ),
                           ),
-                        ),
-                ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             );
           },

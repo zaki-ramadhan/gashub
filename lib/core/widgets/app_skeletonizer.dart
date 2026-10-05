@@ -16,7 +16,18 @@ class AppSkeletonizer extends StatelessWidget {
     this.containersColor,
     this.baseColor,
     this.highlightColor,
-  });
+  }) : _isSliver = false;
+
+  const AppSkeletonizer.sliver({
+    super.key,
+    required this.child,
+    this.isLoading = true,
+    this.ignoreContainers = true,
+    this.enableSwitchAnimation = true,
+    this.containersColor,
+    this.baseColor,
+    this.highlightColor,
+  }) : _isSliver = true;
 
   final Widget child;
   final bool isLoading;
@@ -25,9 +36,23 @@ class AppSkeletonizer extends StatelessWidget {
   final Color? containersColor;
   final Color? baseColor;
   final Color? highlightColor;
+  final bool _isSliver;
 
   @override
   Widget build(BuildContext context) {
+    if (_isSliver) {
+      return Skeletonizer.sliver(
+        enabled: isLoading,
+        ignoreContainers: ignoreContainers,
+        effect: ShimmerEffect(
+          baseColor: baseColor ?? const Color(0xFFCCCCCC),
+          highlightColor: highlightColor ?? const Color(0xFFE2E2E2),
+          duration: const Duration(milliseconds: 1400),
+        ),
+        containersColor: containersColor ?? const Color(0xFFF0F0F0),
+        child: child,
+      );
+    }
     return Skeletonizer(
       enabled: isLoading,
       enableSwitchAnimation: enableSwitchAnimation,

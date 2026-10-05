@@ -98,174 +98,184 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           const SizedBox(width: AppDimensions.space8),
         ],
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Subheader: Schedule banner & filter chips in crisp white container
-          Container(
-            color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(
-              AppDimensions.space16,
-              AppDimensions.space10,
-              AppDimensions.space16,
-              AppDimensions.space12,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                NotificationScheduleBanner(
-                  onEdit: () {
-                    NotificationSettingsSheet.show(
-                      context: context,
-                      initialSettings: NotificationsRepository
-                          .instance.settingsNotifier.value,
-                    );
-                  },
-                ),
-                const SizedBox(height: AppDimensions.space12),
-                ValueListenableBuilder<int>(
-                  valueListenable:
-                      NotificationsRepository.instance.unreadCountNotifier,
-                  builder: (context, unreadCount, _) {
-                    return AppFilterChips<String>(
-                      options: _categoryOptions,
-                      selected: _selectedCategory,
-                      labelBuilder: (cat) {
-                        switch (cat) {
-                          case _catAll:
-                            return 'Semua';
-                          case _catUnread:
-                            return unreadCount > 0
-                                ? 'Belum dibaca ($unreadCount)'
-                                : 'Belum dibaca';
-                          case _catDebt:
-                            return 'Tagihan warung';
-                          case _catRestock:
-                            return 'Jadwal muat';
-                          default:
-                            return cat;
-                        }
-                      },
-                      onSelected: (cat) {
-                        setState(() => _selectedCategory = cat);
-                      },
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
+      body: RefreshIndicator(
+        color: AppColors.brandPrimary,
+        onRefresh: () => NotificationsRepository.instance.fetchNotifications(),
+        child: ValueListenableBuilder<bool>(
+          valueListenable: NotificationsRepository.instance.isLoadingNotifier,
+          builder: (context, isLoading, _) {
+            return ValueListenableBuilder<List<NotificationItem>>(
+              valueListenable:
+                  NotificationsRepository.instance.notificationsNotifier,
+              builder: (context, allItems, _) {
+                final filteredItems = allItems.where((item) {
+                  if (_selectedCategory == _catUnread) {
+                    return !item.isRead;
+                  }
+                  if (_selectedCategory == _catDebt) {
+                    return item.type == NotificationType.debt;
+                  }
+                  if (_selectedCategory == _catRestock) {
+                    return item.type == NotificationType.restock;
+                  }
+                  return true;
+                }).toList();
 
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
+                final grouped = groupItemsByDate<NotificationItem>(
+                  filteredItems,
+                  (item) => item.dateTime,
+                );
+                final sortedDates = grouped.keys.toList();
 
-          // Main List Area: Edge-to-edge flat divided list grouped by date
-          Expanded(
-            child: RefreshIndicator(
-              color: AppColors.brandPrimary,
-              onRefresh: () =>
-                  NotificationsRepository.instance.fetchNotifications(),
-              child: ValueListenableBuilder<bool>(
-                valueListenable:
-                    NotificationsRepository.instance.isLoadingNotifier,
-                builder: (context, isLoading, _) {
-                  return ValueListenableBuilder<List<NotificationItem>>(
-                    valueListenable: NotificationsRepository
-                        .instance.notificationsNotifier,
-                    builder: (context, allItems, _) {
-                      if (isLoading && allItems.isEmpty) {
-                        return const Center(
+                return CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
+                    // Subheader: Schedule banner & filter chips in crisp white container
+                    SliverToBoxAdapter(
+                      child: Container(
+                        color: Colors.white,
+                        padding: const EdgeInsets.fromLTRB(
+                          AppDimensions.space16,
+                          AppDimensions.space10,
+                          AppDimensions.space16,
+                          AppDimensions.space12,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            NotificationScheduleBanner(
+                              onEdit: () {
+                                NotificationSettingsSheet.show(
+                                  context: context,
+                                  initialSettings: NotificationsRepository
+                                      .instance.settingsNotifier.value,
+                                );
+                              },
+                            ),
+                            const SizedBox(height: AppDimensions.space12),
+                            ValueListenableBuilder<int>(
+                              valueListenable: NotificationsRepository
+                                  .instance.unreadCountNotifier,
+                              builder: (context, unreadCount, _) {
+                                return AppFilterChips<String>(
+                                  options: _categoryOptions,
+                                  selected: _selectedCategory,
+                                  labelBuilder: (cat) {
+                                    switch (cat) {
+                                      case _catAll:
+                                        return 'Semua';
+                                      case _catUnread:
+                                        return unreadCount > 0
+                                            ? 'Belum dibaca ($unreadCount)'
+                                            : 'Belum dibaca';
+                                      case _catDebt:
+                                        return 'Tagihan warung';
+                                      case _catRestock:
+                                        return 'Jadwal muat';
+                                      default:
+                                        return cat;
+                                    }
+                                  },
+                                  onSelected: (cat) {
+                                    setState(() => _selectedCategory = cat);
+                                  },
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SliverToBoxAdapter(
+                      child: Divider(
+                        height: 1,
+                        thickness: 1,
+                        color: AppColors.border,
+                      ),
+                    ),
+
+                    if (isLoading && allItems.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: Center(
                           child: CircularProgressIndicator(
                             color: AppColors.brandPrimary,
                           ),
-                        );
-                      }
-
-                      final filteredItems = allItems.where((item) {
-                        if (_selectedCategory == _catUnread) {
-                          return !item.isRead;
-                        }
-                        if (_selectedCategory == _catDebt) {
-                          return item.type == NotificationType.debt;
-                        }
-                        if (_selectedCategory == _catRestock) {
-                          return item.type == NotificationType.restock;
-                        }
-                        return true;
-                      }).toList();
-
-                      if (filteredItems.isEmpty) {
-                        return _buildEmptyState();
-                      }
-
-                      final grouped = groupItemsByDate<NotificationItem>(
-                        filteredItems,
-                        (item) => item.dateTime,
-                      );
-                      final sortedDates = grouped.keys.toList();
-
-                      return ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
+                        ),
+                      )
+                    else if (filteredItems.isEmpty)
+                      SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _buildEmptyState(),
+                      )
+                    else
+                      SliverPadding(
                         padding: const EdgeInsets.only(
                           bottom: AppDimensions.space24,
                         ),
-                        itemCount: sortedDates.length,
-                        itemBuilder: (context, index) {
-                          final dateKey = sortedDates[index];
-                          final itemsForDay = grouped[dateKey]!;
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final dateKey = sortedDates[index];
+                              final itemsForDay = grouped[dateKey]!;
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: AppDimensions.space16,
-                                ),
-                                child: DateSectionHeader(
-                                  title:
-                                      AppFormatters.relativeDateHeader(dateKey),
-                                  topPadding: index == 0
-                                      ? AppDimensions.space12
-                                      : AppDimensions.space20,
-                                ),
-                              ),
-                              const Divider(
-                                height: 1,
-                                thickness: 1,
-                                color: AppColors.border,
-                              ),
-                              for (int i = 0;
-                                  i < itemsForDay.length;
-                                  i++) ...[
-                                NotificationExpandableTile(
-                                  item: itemsForDay[i],
-                                  isExpanded: _expandedId == itemsForDay[i].id,
-                                  onToggle: () {
-                                    setState(() {
-                                      _expandedId =
-                                          (_expandedId == itemsForDay[i].id)
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: AppDimensions.space16,
+                                    ),
+                                    child: DateSectionHeader(
+                                      title: AppFormatters.relativeDateHeader(
+                                          dateKey),
+                                      topPadding: index == 0
+                                          ? AppDimensions.space12
+                                          : AppDimensions.space20,
+                                    ),
+                                  ),
+                                  const Divider(
+                                    height: 1,
+                                    thickness: 1,
+                                    color: AppColors.border,
+                                  ),
+                                  for (int i = 0;
+                                      i < itemsForDay.length;
+                                      i++) ...[
+                                    NotificationExpandableTile(
+                                      item: itemsForDay[i],
+                                      isExpanded:
+                                          _expandedId == itemsForDay[i].id,
+                                      onToggle: () {
+                                        setState(() {
+                                          _expandedId = (_expandedId ==
+                                                  itemsForDay[i].id)
                                               ? null
                                               : itemsForDay[i].id;
-                                    });
-                                  },
-                                  onAction: () =>
-                                      _handleItemAction(itemsForDay[i]),
-                                  onMarkRead: () {
-                                    NotificationsRepository.instance
-                                        .markAsRead(itemsForDay[i].id);
-                                  },
-                                ),
-                              ],
-                            ],
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
+                                        });
+                                      },
+                                      onAction: () =>
+                                          _handleItemAction(itemsForDay[i]),
+                                      onMarkRead: () {
+                                        NotificationsRepository.instance
+                                            .markAsRead(itemsForDay[i].id);
+                                      },
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                            childCount: sortedDates.length,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
       // Fixed bottom bar: Unaffected by scroll, visible only when read notifications exist
       bottomNavigationBar: ValueListenableBuilder<int>(
