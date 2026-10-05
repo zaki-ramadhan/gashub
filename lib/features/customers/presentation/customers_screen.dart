@@ -19,9 +19,38 @@ class _CustomersScreenState extends State<CustomersScreen> {
   String _activeFilter = 'Semua';
   bool _isLoading = false;
 
+  static final List<CustomerModel> _placeholderCustomers = List.generate(
+    6,
+    (i) => CustomerModel(
+      id: 'placeholder_$i',
+      name: '------------------------',
+      owner: '----------------',
+      phone: '------------',
+      address: '------------------------------',
+      activeDebt: 0,
+      totalCylinders: 0,
+      lastOrderDate: DateTime.now(),
+      transactions: const [],
+    ),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    if (CustomersRepository.instance.customersNotifier.value.isEmpty) {
+      setState(() => _isLoading = true);
+      await CustomersRepository.instance.fetchCustomers();
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _handleRefresh() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 650));
+    await CustomersRepository.instance.fetchCustomers();
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -117,12 +146,13 @@ class _CustomersScreenState extends State<CustomersScreen> {
                       // Filter Chips & Counter
                       Row(
                         children: [
-                          _buildFilterChip('Semua'),
-                          const SizedBox(width: AppDimensions.space8),
-                          _buildFilterChip('Ada Utang'),
-                          const SizedBox(width: AppDimensions.space8),
-                          _buildFilterChip('Lunas'),
-                          const Spacer(),
+                          Expanded(
+                            child: AppFilterChips<String>(
+                              options: const ['Semua', 'Ada Utang', 'Lunas'],
+                              selected: _activeFilter,
+                              onSelected: (filter) => setState(() => _activeFilter = filter),
+                            ),
+                          ),
                           AppSkeletonizer(
                             isLoading: _isLoading,
                             child: Text(
@@ -176,30 +206,40 @@ class _CustomersScreenState extends State<CustomersScreen> {
                         )
                       : AppSkeletonizer(
                           isLoading: _isLoading,
-                          child: ListView.separated(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            padding: const EdgeInsets.all(AppDimensions.space16),
-                            itemCount: filtered.length,
-                            separatorBuilder: (context, index) =>
-                                const SizedBox(height: AppDimensions.space8),
-                            itemBuilder: (context, index) {
-                              final customer = filtered[index];
+                          child: Builder(
+                            builder: (context) {
+                              final displayList = (_isLoading && filtered.isEmpty)
+                                  ? _placeholderCustomers
+                                  : filtered;
 
-                              return FlatTransactionRow(
-                                title: customer.name,
-                                subtitle: customer.lastOrderDate != null
-                                    ? 'Kirim terakhir: ${AppFormatters.date(customer.lastOrderDate!)}'
-                                    : 'Belum ada riwayat kirim',
-                                amount: customer.hasDebt
-                                    ? AppFormatters.currency(customer.activeDebt)
-                                    : '',
-                                amountColor: AppColors.dangerText,
-                                statusLabel: customer.hasDebt ? 'Ada Utang' : null,
-                                statusType: customer.hasDebt ? BadgeType.danger : null,
-                                icon: Icons.person_outline,
-                                iconColor: AppColors.brandPrimary,
-                                iconBg: AppColors.canvas,
-                                onTap: () => CustomerDetailSheet.show(context, customer),
+                              return ListView.separated(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(AppDimensions.space16),
+                                itemCount: displayList.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: AppDimensions.space8),
+                                itemBuilder: (context, index) {
+                                  final customer = displayList[index];
+
+                                  return FlatTransactionRow(
+                                    title: customer.name,
+                                    subtitle: customer.lastOrderDate != null
+                                        ? 'Kirim terakhir: ${AppFormatters.date(customer.lastOrderDate!)}'
+                                        : 'Belum ada riwayat kirim',
+                                    amount: customer.hasDebt
+                                        ? AppFormatters.currency(customer.activeDebt)
+                                        : '',
+                                    amountColor: AppColors.dangerText,
+                                    statusLabel: customer.hasDebt ? 'Ada Utang' : null,
+                                    statusType: customer.hasDebt ? BadgeType.danger : null,
+                                    icon: Icons.person_outline,
+                                    iconColor: AppColors.brandPrimary,
+                                    iconBg: AppColors.canvas,
+                                    onTap: _isLoading
+                                        ? null
+                                        : () => CustomerDetailSheet.show(context, customer),
+                                  );
+                                },
                               );
                             },
                           ),
@@ -213,28 +253,5 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    final isSelected = _activeFilter == label;
-    return GestureDetector(
-      onTap: () => setState(() => _activeFilter = label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.brandPrimary : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-          border: Border.all(
-            color: isSelected ? AppColors.brandPrimary : AppColors.border,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: isSelected ? Colors.white : AppColors.textPrimary,
-          ),
-        ),
-      ),
-    );
-  }
+
 }

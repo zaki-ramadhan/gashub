@@ -37,7 +37,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     final name = AppInputFormatters.trim(_nameController.text);
     final owner = AppInputFormatters.trim(_ownerController.text);
     final phone = AppInputFormatters.trim(_phoneController.text);
@@ -54,22 +54,30 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
     setState(() => _isLoading = true);
 
-    final newCustomer = CustomerModel(
-      id: 'c-${DateTime.now().millisecondsSinceEpoch}',
-      name: name,
-      owner: owner,
-      phone: phone,
-      address: address.isEmpty ? 'Alamat belum diatur' : address,
-      activeDebt: 0,
-      totalCylinders: 0,
-      lastOrderDate: null,
-      transactions: const [],
-    );
+    try {
+      final newCustomer = CustomerModel(
+        id: '',
+        name: name,
+        owner: owner,
+        phone: phone,
+        address: address.isEmpty ? 'Alamat belum diatur' : address,
+        activeDebt: 0,
+        totalCylinders: 0,
+        lastOrderDate: null,
+        transactions: const [],
+      );
 
-    CustomersRepository.instance.addCustomer(newCustomer);
+      await CustomersRepository.instance.addCustomer(newCustomer);
+      if (!mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pop();
-    AppToast.success(title: 'Pelanggan $name berhasil ditambahkan');
+      Navigator.of(context, rootNavigator: true).pop();
+      AppToast.success(title: 'Pelanggan $name berhasil ditambahkan');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.error(title: 'Gagal menambah pelanggan: $e');
+      }
+    }
   }
 
   @override

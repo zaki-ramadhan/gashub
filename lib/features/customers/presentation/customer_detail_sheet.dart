@@ -55,18 +55,24 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
     if (debt <= 0) return;
 
     setState(() => _isLoading = true);
-    CustomersRepository.instance.payDebt(_customer.id, debt);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (mounted) {
-      setState(() {
-        _customer = _customer.copyWith(activeDebt: 0);
-        _paginationController.setSource(_customer.transactions);
-        _isLoading = false;
-      });
-      AppToast.success(
-        title: 'Pelunasan berhasil dicatat',
-        description: 'Utang ${_customer.name} kini lunas',
-      );
+    try {
+      await CustomersRepository.instance.payDebt(_customer.id, debt);
+      if (mounted) {
+        setState(() {
+          _customer = _customer.copyWith(activeDebt: 0);
+          _paginationController.setSource(_customer.transactions);
+          _isLoading = false;
+        });
+        AppToast.success(
+          title: 'Pelunasan berhasil dicatat',
+          description: 'Utang ${_customer.name} kini lunas',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.error(title: 'Gagal mencatat pelunasan: $e');
+      }
     }
   }
 
