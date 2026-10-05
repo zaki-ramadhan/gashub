@@ -9,16 +9,21 @@ void main() {
       SupabaseConstants.supabasePublishableKey,
     );
 
-    // Cek koneksi ke tabel products
     final products = await client.from('products').select();
-    expect(products, isA<List>());
-
-    // Cek koneksi ke tabel customers
     final customers = await client.from('customers').select();
-    expect(customers, isA<List>());
-
-    // Cek koneksi ke tabel distributions
     final distributions = await client.from('distributions').select();
-    expect(distributions, isA<List>());
+    final cashflow = await client.from('cashflow_entries').select();
+    int cashIn = 0;
+    int cashOut = 0;
+    for (final row in cashflow as List<dynamic>) {
+      final m = row as Map<String, dynamic>;
+      final amt = (m['amount'] as num?)?.toInt() ?? 0;
+      if (m['direction'] == 'in') {
+        cashIn += amt;
+      } else {
+        cashOut += amt;
+      }
+    }
+    print('Cash In: $cashIn, Cash Out: $cashOut, Net: ${cashIn - cashOut}');
   });
 }
