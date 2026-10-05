@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../../customers/data/customers_repository.dart';
+import '../../customers/domain/customer_model.dart';
+import '../../inventory/data/inventory_repository.dart';
+import '../../reports/data/reports_repository.dart';
+import '../data/distribution_repository.dart';
 
 /// Bottom sheet form for recording LPG 3kg sales / distribution to warung.
 class DistributionFormSheet extends StatefulWidget {
@@ -19,62 +24,14 @@ class DistributionFormSheet extends StatefulWidget {
   State<DistributionFormSheet> createState() => _DistributionFormSheetState();
 }
 
-/// Customer entity representing registered store or buyer.
-class CustomerEntity {
-  final String id;
-  final String name;
-  final String phone;
-
-  const CustomerEntity({
-    required this.id,
-    required this.name,
-    this.phone = '',
-  });
-}
-
 class _DistributionFormSheetState extends State<DistributionFormSheet> {
-  static final List<CustomerEntity> _masterCustomers = [
-    const CustomerEntity(
-      id: 'c1111111-1111-1111-1111-111111111111',
-      name: 'Warung Madura Pak Joko',
-      phone: '0812-3456-7890',
-    ),
-    const CustomerEntity(
-      id: 'c2222222-2222-2222-2222-222222222222',
-      name: 'Toko Berkah Ibu',
-      phone: '0813-9876-5432',
-    ),
-    const CustomerEntity(
-      id: 'c3333333-3333-3333-3333-333333333333',
-      name: 'Pangkalan Barokah H. Slamet',
-      phone: '0811-2233-4455',
-    ),
-    const CustomerEntity(
-      id: 'c4444444-4444-4444-4444-444444444444',
-      name: 'Warung Kelontong Bu Siti',
-      phone: '0857-1122-3344',
-    ),
-    const CustomerEntity(
-      id: 'c5555555-5555-5555-5555-555555555555',
-      name: 'RM Padang Sederhana',
-      phone: '0821-4455-6677',
-    ),
-    const CustomerEntity(
-      id: 'c6666666-6666-6666-6666-666666666666',
-      name: 'Warung Nasi Bu Nur',
-      phone: '0819-3322-1100',
-    ),
-    const CustomerEntity(
-      id: 'c7777777-7777-7777-7777-777777777777',
-      name: 'Toko Kelontong Berkat',
-      phone: '0852-9988-7766',
-    ),
-  ];
+  List<CustomerModel> get _masterCustomers =>
+      CustomersRepository.instance.customersNotifier.value;
 
-  CustomerEntity? _selectedCustomer = _masterCustomers.first;
+  CustomerModel? _selectedCustomer;
   final _customerController = TextEditingController();
   final _qtyController = TextEditingController(text: '15');
-  final int _unitPrice = 19000;
+  int get _unitPrice => InventoryRepository.instance.sellingPrice;
   bool _isPaid = true;
   bool _isLoading = false;
 
@@ -84,7 +41,21 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
   @override
   void initState() {
     super.initState();
-    _customerController.text = _selectedCustomer?.name ?? '';
+    if (CustomersRepository.instance.customersNotifier.value.isEmpty) {
+      CustomersRepository.instance.fetchCustomers().then((_) {
+        if (mounted) {
+          setState(() {
+            if (_selectedCustomer == null && _masterCustomers.isNotEmpty) {
+              _selectedCustomer = _masterCustomers.first;
+              _customerController.text = _selectedCustomer?.name ?? '';
+            }
+          });
+        }
+      });
+    } else {
+      _selectedCustomer = _masterCustomers.firstOrNull;
+      _customerController.text = _selectedCustomer?.name ?? '';
+    }
   }
 
   @override
@@ -94,22 +65,45 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
     super.dispose();
   }
 
-  CustomerEntity _createNewCustomer(String name, {bool silent = false}) {
+  Future<CustomerModel> _createNewCustomer(String name, {bool silent = false}) async {
     final clean = AppInputFormatters.trim(name);
-    final newEntity = CustomerEntity(
-      id: 'c_${DateTime.now().millisecondsSinceEpoch}',
+    final newModel = CustomerModel(
+      id: '',
       name: clean,
+      phone: '',
+      address: 'Alamat belum diatur',
+      owner: '',
+      activeDebt: 0,
+      totalCylinders: 0,
+      lastOrderDate: null,
+      transactions: const [],
     );
-    _masterCustomers.insert(0, newEntity);
-    setState(() {
-      _selectedCustomer = newEntity;
-      _customerController.text = clean;
-      _customerController.selection = TextSelection.collapsed(offset: clean.length);
-    });
+    await CustomersRepository.instance.addCustomer(newModel);
+    final match = _masterCustomers.cast<CustomerModel?>().firstWhere(
+      (c) => c?.name.toLowerCase() == clean.toLowerCase(),
+      orElse: () => CustomerModel(
+        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        name: clean,
+        phone: '',
+        address: '',
+        owner: '',
+        activeDebt: 0,
+        totalCylinders: 0,
+        lastOrderDate: null,
+        transactions: const [],
+      ),
+    );
+    if (mounted) {
+      setState(() {
+        _selectedCustomer = match;
+        _customerController.text = clean;
+        _customerController.selection = TextSelection.collapsed(offset: clean.length);
+      });
+    }
     if (!silent) {
       AppToast.success(title: '"$clean" ditambahkan ke daftar mitra');
     }
-    return newEntity;
+    return match!;
   }
 
   Future<void> _save() async {
@@ -123,20 +117,44 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
       return;
     }
 
-    // Auto-create customer if not existing yet
-    final customer = _selectedCustomer ??
-        _masterCustomers.cast<CustomerEntity?>().firstWhere(
-          (c) => c?.name.toLowerCase() == customerName.toLowerCase(),
-          orElse: () => null,
-        ) ??
-        _createNewCustomer(customerName, silent: true);
-
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pop();
-    AppToast.success(title: 'Penjualan ke ${customer.name} berhasil disimpan');
+    try {
+      var customer = _selectedCustomer ??
+          _masterCustomers.cast<CustomerModel?>().firstWhere(
+            (c) => c?.name.toLowerCase() == customerName.toLowerCase(),
+            orElse: () => null,
+          );
+
+      customer ??= await _createNewCustomer(customerName, silent: true);
+
+      await DistributionRepository.instance.createDistribution(
+        customerId: customer.id,
+        items: [
+          {
+            'product_id': '11111111-1111-1111-1111-111111111111',
+            'quantity': _qty,
+            'unit_price': _unitPrice,
+          }
+        ],
+        amountPaid: _isPaid ? _subtotal : 0,
+        notes: 'Pengiriman via GasHub Mobile',
+      );
+
+      await Future.wait([
+        InventoryRepository.instance.fetchInventory(),
+        ReportsRepository.instance.fetchLiveReport(),
+      ]);
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      AppToast.success(title: 'Penjualan ke ${customer.name} berhasil disimpan');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.error(title: 'Gagal menyimpan transaksi: $e');
+      }
+    }
   }
 
   @override
@@ -194,7 +212,7 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
             ),
             onChanged: (val) {
               final clean = val.trim().toLowerCase();
-              final match = _masterCustomers.cast<CustomerEntity?>().firstWhere(
+              final match = _masterCustomers.cast<CustomerModel?>().firstWhere(
                 (c) => c?.name.toLowerCase() == clean,
                 orElse: () => null,
               );
