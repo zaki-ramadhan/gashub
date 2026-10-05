@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
+import '../../dashboard/data/dashboard_repository.dart';
+import '../data/reports_repository.dart';
 
 /// Modal bottom sheet for recording operational business expenses.
 /// Wrapped inside reusable [AppBottomSheet].
@@ -50,11 +52,26 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
     }
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 350));
-    if (!mounted) return;
+    try {
+      final note = _noteController.text.trim().isNotEmpty
+          ? _noteController.text.trim()
+          : _selectedCategory;
+      await DashboardRepository.instance.recordExpense(
+        amount: amount,
+        notes: note,
+        category: _selectedCategory,
+      );
+      await ReportsRepository.instance.fetchLiveReport();
+      if (!mounted) return;
 
-    Navigator.of(context, rootNavigator: true).pop();
-    AppToast.success(title: 'Pengeluaran berhasil disimpan');
+      Navigator.of(context, rootNavigator: true).pop();
+      AppToast.success(title: 'Pengeluaran berhasil disimpan');
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        AppToast.error(title: 'Gagal mencatat pengeluaran: $e');
+      }
+    }
   }
 
   @override

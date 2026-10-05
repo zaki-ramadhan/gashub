@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
-import '../data/reports_data.dart';
+import '../data/reports_repository.dart';
 import '../domain/report_models.dart';
+import 'widgets/financial_breakdown_card.dart';
+import 'widgets/period_picker_sheet.dart';
+import 'widgets/report_metric_card.dart';
 
 /// Reports & Analytics Screen designed for an individual gas depot owner.
 /// - Clean, balanced contrast with uniform white card surfaces.
@@ -37,8 +40,16 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
   Future<void> _handleRefresh() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 650));
-    if (mounted) setState(() => _isLoading = false);
+    await ReportsRepository.instance.fetchLiveReport();
+    if (mounted) {
+      final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+      setState(() {
+        if (options.isNotEmpty) {
+          _activeSummary = options.first;
+        }
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -46,14 +57,46 @@ class _ReportsScreenState extends State<ReportsScreen> {
     super.initState();
     _selectedTabIndex = widget.initialTabIndex ?? ReportsScreen.activeTabNotifier.value;
     ReportsScreen.activeTabNotifier.addListener(_onNotifierTabChanged);
-    final options = ReportsData.getOptionsForTab(_selectedTabIndex);
-    _activeSummary = options.first;
+    ReportsRepository.instance.liveSummaryNotifier.addListener(_onLiveReportUpdated);
+    final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+    if (options.isNotEmpty) {
+      _activeSummary = options.first;
+    }
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    if (ReportsRepository.instance.liveSummaryNotifier.value == null) {
+      setState(() => _isLoading = true);
+      await ReportsRepository.instance.fetchLiveReport();
+      if (mounted) {
+        final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+        setState(() {
+          if (options.isNotEmpty) {
+            _activeSummary = options.first;
+          }
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     ReportsScreen.activeTabNotifier.removeListener(_onNotifierTabChanged);
+    ReportsRepository.instance.liveSummaryNotifier.removeListener(_onLiveReportUpdated);
     super.dispose();
+  }
+
+  void _onLiveReportUpdated() {
+    if (mounted) {
+      final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+      if (options.isNotEmpty) {
+        setState(() {
+          _activeSummary = options.first;
+        });
+      }
+    }
   }
 
   void _onNotifierTabChanged() {
@@ -61,12 +104,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (_selectedTabIndex != newTab && mounted) {
       setState(() {
         _selectedTabIndex = newTab;
-        _isLoading = true;
-        final options = ReportsData.getOptionsForTab(_selectedTabIndex);
-        _activeSummary = options.first;
-      });
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) setState(() => _isLoading = false);
+        final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+        if (options.isNotEmpty) {
+          _activeSummary = options.first;
+        }
       });
     }
   }
@@ -77,8 +118,10 @@ class _ReportsScreenState extends State<ReportsScreen> {
     if (widget.initialTabIndex != null && widget.initialTabIndex != _selectedTabIndex) {
       setState(() {
         _selectedTabIndex = widget.initialTabIndex!;
-        final options = ReportsData.getOptionsForTab(_selectedTabIndex);
-        _activeSummary = options.first;
+        final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+        if (options.isNotEmpty) {
+          _activeSummary = options.first;
+        }
       });
     }
   }
@@ -88,93 +131,24 @@ class _ReportsScreenState extends State<ReportsScreen> {
     ReportsScreen.activeTabNotifier.value = index;
     setState(() {
       _selectedTabIndex = index;
-      _isLoading = true;
-      final options = ReportsData.getOptionsForTab(index);
-      _activeSummary = options.first;
-    });
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (mounted) setState(() => _isLoading = false);
+      final options = ReportsRepository.instance.getOptionsForTab(index);
+      if (options.isNotEmpty) {
+        _activeSummary = options.first;
+      }
     });
   }
 
   void _showPeriodPickerSheet(BuildContext context) {
-    final options = ReportsData.getOptionsForTab(_selectedTabIndex);
-
-    AppBottomSheet.show(
+    final options = ReportsRepository.instance.getOptionsForTab(_selectedTabIndex);
+    PeriodPickerSheet.show(
       context: context,
-      title: 'Pilih Periode',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: options.map((summary) {
-          final isSelected = summary.id == _activeSummary.id;
-
-          return InkWell(
-            onTap: () {
-              setState(() {
-                _activeSummary = summary;
-                _isLoading = true;
-              });
-              Navigator.of(context, rootNavigator: true).pop();
-              Future.delayed(const Duration(milliseconds: 300), () {
-                if (mounted) setState(() => _isLoading = false);
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppDimensions.space16,
-                vertical: AppDimensions.space12,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.brandPrimary.withValues(alpha: 0.05) : Colors.transparent,
-                border: const Border(
-                  bottom: BorderSide(color: AppColors.border, width: 0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          summary.title,
-                          style: TextStyle(
-                            fontSize: 14.5,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected ? AppColors.brandPrimary : AppColors.textPrimary,
-                          ),
-                        ),
-                        if (_selectedTabIndex == 0) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            summary.dateRangeLabel,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (isSelected)
-                    const Icon(
-                      Icons.check_circle,
-                      size: 20,
-                      color: AppColors.brandPrimary,
-                    )
-                  else
-                    const Icon(
-                      Icons.radio_button_unchecked,
-                      size: 20,
-                      color: AppColors.border,
-                    ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
+      options: options,
+      activeSummary: _activeSummary,
+      onSelected: (summary) {
+        setState(() {
+          _activeSummary = summary;
+        });
+      },
     );
   }
 
@@ -300,7 +274,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       children: [
                         // Card 1: Untung Bersih
                         Expanded(
-                          child: _buildMetricCard(
+                          child: ReportMetricCard(
                             title: 'Untung Bersih',
                             value: current.shortNetProfit,
                             valueColor: AppColors.brandPrimary,
@@ -319,7 +293,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
 
                         // Card 2: Tabung Terjual
                         Expanded(
-                          child: _buildMetricCard(
+                          child: ReportMetricCard(
                             title: 'Tabung Terjual',
                             value: '${AppFormatters.number(current.totalSoldQty)} tabung',
                             subWidget: const Text(
@@ -341,7 +315,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       children: [
                         // Card 3: Total Penjualan
                         Expanded(
-                          child: _buildMetricCard(
+                          child: ReportMetricCard(
                             title: 'Total Penjualan',
                             value: current.shortOmset,
                             subWidget: Text(
@@ -363,7 +337,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                             child: InkWell(
                               onTap: () => context.push('/piutang'),
                               borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-                              child: _buildMetricCard(
+                              child: ReportMetricCard(
                                 title: 'Utang Pelanggan',
                                 value: current.shortReceivable,
                                 subWidget: const Text(
@@ -385,7 +359,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                     const SizedBox(height: AppDimensions.space20),
 
                     // 6. Rincian Keuangan (Auditable Breakdown)
-                    _buildFinancialBreakdownCard(context, current),
+                    FinancialBreakdownCard(summary: current),
                   ],
                 ),
               ),
@@ -431,247 +405,5 @@ class _ReportsScreenState extends State<ReportsScreen> {
     );
   }
 
-  /// Metric summary card with NO top-right icons and harmonious white surface.
-  Widget _buildMetricCard({
-    required String title,
-    required String value,
-    required Widget subWidget,
-    Color? valueColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: 12,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-        border: Border.all(color: AppColors.border, width: 1.0),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Clean title row (NO decorative icons)
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: valueColor ?? AppColors.textPrimary,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 5),
-          subWidget,
-        ],
-      ),
-    );
-  }
 
-  /// Simplified financial breakdown based on depot gas cash flow
-  Widget _buildFinancialBreakdownCard(BuildContext context, ReportPeriodSummary current) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-        border: Border.all(color: AppColors.border, width: 1.0),
-      ),
-      padding: const EdgeInsets.all(AppDimensions.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header: Plain Title (tanpa subteks)
-          const Text(
-            'Rincian Keuangan',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space12),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          const SizedBox(height: AppDimensions.space12),
-
-          // 1. REVENUE (Total omset penjualan)
-          _buildLedgerRow(
-            title: 'Total omset penjualan',
-            amount: AppFormatters.currency(current.rawOmset),
-            isBold: true,
-            amountColor: AppColors.brandPrimary,
-          ),
-          const SizedBox(height: AppDimensions.space8),
-          _buildIndicatorSubRow(
-            title: 'Penerimaan tunai cair',
-            amount: AppFormatters.currency(current.cashIn),
-            dotColor: const Color(0xFF16A34A),
-            amountColor: AppColors.textPrimary,
-          ),
-          const SizedBox(height: AppDimensions.space6),
-          _buildIndicatorSubRow(
-            title: 'Utang pelanggan belum dibayar',
-            amount: AppFormatters.currency(current.receivable),
-            dotColor: const Color(0xFFD97706),
-            amountColor: AppColors.warningText,
-          ),
-
-          const SizedBox(height: AppDimensions.space12),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
-          const SizedBox(height: AppDimensions.space12),
-
-          // 2. BEBAN POKOK (HPP KULAKAN SPPBE)
-          _buildLedgerRow(
-            title: 'Kulakan SPPBE (HPP)',
-            amount: '-${AppFormatters.currency(current.hpp)}',
-            isBold: true,
-            amountColor: const Color(0xFFDC2626),
-            subtitle: '${AppFormatters.number(current.totalSoldQty)} tabung × Rp 15.750',
-          ),
-
-          const SizedBox(height: AppDimensions.space16),
-
-          // 3. ANCHOR FOOTER: UNTUNG BERSIH AKHIR (Tanpa subteks)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF14432A),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Text(
-                  'Untung bersih akhir',
-                  style: TextStyle(
-                    fontSize: 14.5,
-                    fontWeight: FontWeight.w500,
-                    color: Color(0xFFDCFCE7),
-                  ),
-                ),
-                Text(
-                  AppFormatters.currency(current.grossProfit),
-                  style: const TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.3,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ==========================================
-  // SHARED HELPER ROWS
-  // ==========================================
-  Widget _buildLedgerRow({
-    required String title,
-    required String amount,
-    bool isBold = false,
-    Color? amountColor,
-    String? subtitle,
-  }) {
-    return Row(
-      crossAxisAlignment: subtitle != null ? CrossAxisAlignment.start : CrossAxisAlignment.center,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: isBold ? 14.5 : 14,
-                  fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (subtitle != null) ...[
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12.5,
-                    color: AppColors.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          amount,
-          style: TextStyle(
-            fontSize: isBold ? 15.5 : 14.5,
-            fontWeight: isBold ? FontWeight.w600 : FontWeight.w500,
-            color: amountColor ?? AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIndicatorSubRow({
-    required String title,
-    required String amount,
-    required Color dotColor,
-    Color? amountColor,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 8),
-      child: Row(
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(
-              color: dotColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textPrimary,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            amount,
-            style: TextStyle(
-              fontSize: 13.5,
-              fontWeight: FontWeight.w500,
-              color: amountColor ?? AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
