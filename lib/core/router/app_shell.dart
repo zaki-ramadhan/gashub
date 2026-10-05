@@ -3,20 +3,28 @@ import 'package:go_router/go_router.dart';
 import '../../features/distribution/presentation/distribution_form_sheet.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
+import 'animated_branch_container.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({
     super.key,
     required this.navigationShell,
+    this.children,
   });
 
   final StatefulNavigationShell navigationShell;
+  final List<Widget>? children;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      body: navigationShell,
+      body: children != null
+          ? AnimatedBranchContainer(
+              currentIndex: navigationShell.currentIndex,
+              children: children!,
+            )
+          : navigationShell,
       bottomNavigationBar: SafeArea(
         bottom: true,
         child: Padding(

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../features/customers/presentation/customers_screen.dart'; // Customer directory
+import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/distribution/presentation/distribution_screen.dart';
 import '../../features/inventory/presentation/inventory_screen.dart';
 import '../../features/receivables/presentation/receivables_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
+import 'app_page_transitions.dart';
 import 'app_shell.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -19,18 +20,31 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/splash',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const SplashScreen(),
+      pageBuilder: (context, state) => AppPageTransitions.fade(
+        state: state,
+        child: const SplashScreen(),
+      ),
     ),
-    StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) {
-        return AppShell(navigationShell: navigationShell);
+    StatefulShellRoute(
+      pageBuilder: (context, state, navigationShell) => AppPageTransitions.fade(
+        state: state,
+        child: navigationShell,
+      ),
+      navigatorContainerBuilder: (context, navigationShell, children) {
+        return AppShell(
+          navigationShell: navigationShell,
+          children: children,
+        );
       },
       branches: [
         StatefulShellBranch(
           routes: [
             GoRoute(
               path: '/home',
-              builder: (context, state) => const DashboardScreen(),
+              pageBuilder: (context, state) => AppPageTransitions.slide(
+                state: state,
+                child: const DashboardScreen(),
+              ),
             ),
           ],
         ),
@@ -38,7 +52,10 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/distribusi',
-              builder: (context, state) => const DistributionScreen(),
+              pageBuilder: (context, state) => AppPageTransitions.slide(
+                state: state,
+                child: const DistributionScreen(),
+              ),
             ),
           ],
         ),
@@ -46,7 +63,10 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/stok',
-              builder: (context, state) => const InventoryScreen(),
+              pageBuilder: (context, state) => AppPageTransitions.slide(
+                state: state,
+                child: const InventoryScreen(),
+              ),
             ),
           ],
         ),
@@ -54,12 +74,15 @@ final GoRouter appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/laporan',
-              builder: (context, state) {
+              pageBuilder: (context, state) {
                 final tabParam = state.uri.queryParameters['tab'];
                 final initialTab = int.tryParse(tabParam ?? '');
-                return ReportsScreen(
-                  key: ValueKey(state.uri.toString()),
-                  initialTabIndex: initialTab,
+                return AppPageTransitions.slide(
+                  state: state,
+                  child: ReportsScreen(
+                    key: ValueKey(state.uri.toString()),
+                    initialTabIndex: initialTab,
+                  ),
                 );
               },
             ),
@@ -70,12 +93,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/piutang',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const ReceivablesScreen(),
+      pageBuilder: (context, state) => AppPageTransitions.slide(
+        state: state,
+        child: const ReceivablesScreen(),
+      ),
     ),
     GoRoute(
       path: '/warung',
       parentNavigatorKey: _rootNavigatorKey,
-      builder: (context, state) => const CustomersScreen(),
+      pageBuilder: (context, state) => AppPageTransitions.slide(
+        state: state,
+        child: const CustomersScreen(),
+      ),
     ),
   ],
 );
