@@ -176,9 +176,9 @@ class _NotificationSettingsSheetState extends State<NotificationSettingsSheet> {
                     const Divider(height: 1, thickness: 1, color: AppColors.border),
                     const SizedBox(height: AppDimensions.space16),
 
-                    // Section: Batas tagihan warung
+                    // Section: Batas tagihan pelanggan
                     const Text(
-                      'Batas waktu tagihan warung',
+                      'Batas waktu tagihan pelanggan',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,

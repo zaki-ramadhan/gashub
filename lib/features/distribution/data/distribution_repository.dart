@@ -123,7 +123,7 @@ class DistributionRepository {
           'quantity': qty,
           'source_type': 'distribution',
           'source_id': distId,
-          'reason': 'Penjualan ke toko mitra',
+          'reason': 'Penjualan ke pelanggan',
           'business_date': today,
         });
       }

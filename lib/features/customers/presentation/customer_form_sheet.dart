@@ -71,7 +71,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
       if (!mounted) return;
 
       Navigator.of(context, rootNavigator: true).pop();
-      AppToast.success(title: 'Pelanggan $name berhasil ditambahkan');
+      AppToast.success(title: 'Pelanggan berhasil ditambahkan');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -106,7 +106,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
             decoration: const InputDecoration(
-              hintText: 'Contoh: Toko Berkah / RM Padang',
+              hintText: 'Contoh: Berkah / RM Padang',
             ),
           ),
           const SizedBox(height: AppDimensions.space12),
@@ -151,7 +151,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
 
           // Alamat
           const Text(
-            'Alamat / Patokan Toko',
+            'Alamat Pelanggan',
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,

@@ -173,8 +173,8 @@ class NotificationsRepository {
           final bool isOverdue = daysElapsed >= settings.debtDueDays;
 
           final String message = isOverdue
-              ? '$customerName masih memiliki sisa tagihan sebesar $formattedAmount dari transaksi $daysElapsed hari yang lalu. Silakan lakukan penagihan saat pengiriman gas hari ini.'
-              : '$customerName memiliki tagihan belum lunas sebesar $formattedAmount dari transaksi $daysElapsed hari yang lalu. Mohon konfirmasi pembayaran saat pengiriman berikutnya.';
+              ? 'Sisa tagihan $formattedAmount ($daysElapsed hari belum lunas).'
+              : 'Sisa tagihan $formattedAmount ($daysElapsed hari lalu).';
 
           items.add(NotificationItem(
             id: notifId,
@@ -222,10 +222,10 @@ class NotificationsRepository {
 
           if (daysUntil == 0) {
             title = 'Jadwal muat gas hari ini';
-            message = 'Hari ini dijadwalkan pengambilan pasokan tabung gas$notesPart. Pastikan tabung kosong sudah siap diberangkatkan dan koordinasikan dengan pekerja.';
+            message = 'Pengambilan pasokan tabung gas hari ini$notesPart.';
           } else {
             title = 'Jadwal muat gas tertunda';
-            message = 'Jadwal pengambilan gas dari ${AppFormatters.relativeDateHeader(scheduleDate)} belum tercatat selesai$notesPart. Silakan periksa status pasokan.';
+            message = 'Jadwal muat gas dari ${AppFormatters.relativeDateHeader(scheduleDate)} belum selesai$notesPart.';
           }
 
           items.add(NotificationItem(

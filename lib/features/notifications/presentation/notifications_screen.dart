@@ -169,7 +169,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                                             ? 'Belum dibaca ($unreadCount)'
                                             : 'Belum dibaca';
                                       case _catDebt:
-                                        return 'Tagihan warung';
+                                        return 'Tagihan pelanggan';
                                       case _catRestock:
                                         return 'Jadwal muat';
                                       default:
@@ -398,7 +398,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (confirmed == true) {
       await NotificationsRepository.instance.clearReadNotifications();
       if (mounted) {
-        AppToast.success(title: 'Notifikasi terbaca berhasil dibersihkan');
+        AppToast.success(title: 'Notifikasi berhasil dibersihkan');
       }
     }
   }
@@ -435,7 +435,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             const SizedBox(height: AppDimensions.space8),
             Text(
               _selectedCategory == _catAll
-                  ? 'Semua jadwal muat gas dan tagihan warung telah ditangani dengan baik.'
+                  ? 'Semua jadwal muat gas dan tagihan pelanggan telah ditangani dengan baik.'
                   : _selectedCategory == _catUnread
                       ? 'Tidak ada pengingat yang belum dibaca saat ini.'
                       : 'Tidak ada pengingat aktif pada kategori ini saat ini.',

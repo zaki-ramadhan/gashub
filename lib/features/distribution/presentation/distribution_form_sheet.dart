@@ -101,7 +101,7 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
       });
     }
     if (!silent) {
-      AppToast.success(title: '"$clean" ditambahkan ke daftar mitra');
+      AppToast.success(title: 'Pelanggan berhasil ditambahkan');
     }
     return match!;
   }
@@ -148,7 +148,7 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
 
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      AppToast.success(title: 'Penjualan ke ${customer.name} berhasil disimpan');
+      AppToast.success(title: 'Data distribusi berhasil disimpan');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
