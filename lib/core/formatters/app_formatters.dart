@@ -45,15 +45,18 @@ abstract final class AppFormatters {
     return '${_timeFormat.format(dateTime)} WIB';
   }
 
-  /// Formats date with relative day header (Hari Ini, Kemarin, or Hari, d MMM yyyy)
+  /// Formats date with relative day description (Hari ini, Besok, Kemarin, or Hari, d MMM yyyy)
   static String relativeDateHeader(DateTime dateTime) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final target = DateTime(dateTime.year, dateTime.month, dateTime.day);
+    final diff = target.difference(today).inDays;
 
-    if (target == today) {
-      return 'Hari Ini, ${date(dateTime)}';
-    } else if (target == today.subtract(const Duration(days: 1))) {
+    if (diff == 0) {
+      return 'Hari ini, ${date(dateTime)}';
+    } else if (diff == 1) {
+      return 'Besok, ${date(dateTime)}';
+    } else if (diff == -1) {
       return 'Kemarin, ${date(dateTime)}';
     } else {
       return '${dayOfWeek(dateTime)}, ${date(dateTime)}';

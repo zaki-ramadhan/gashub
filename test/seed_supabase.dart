@@ -401,6 +401,19 @@ void main() {
       },
     ]);
 
+    // 10. Restock Schedule (Jadwal Muat Pasokan)
+    print('Seeding restock schedule for tomorrow...');
+    final tomorrow = DateTime.now().add(const Duration(days: 1)).toIso8601String().split('T')[0];
+    await client.from('restock_schedules').upsert([
+      {
+        'id': '61111111-1111-1111-1111-111111111111',
+        'supplier_id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+        'scheduled_date': tomorrow,
+        'status': 'scheduled',
+        'notes': 'Muat pagi kuota DO Pertamina 100 tabung 3kg',
+      },
+    ]);
+
     print('Seeding completed successfully!');
   });
 }

@@ -43,6 +43,7 @@ dependencies:
   fl_chart: ^1.2.0
   toastification: ^3.2.0
   page_transition: ^2.2.2
+  shared_preferences: ^2.5.5
 
 dev_dependencies:
   flutter_test:

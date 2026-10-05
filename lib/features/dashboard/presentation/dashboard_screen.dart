@@ -8,6 +8,7 @@ import '../../distribution/domain/distribution_model.dart';
 import '../../distribution/presentation/distribution_form_sheet.dart';
 import '../../inventory/presentation/price_setting_sheet.dart';
 import '../../inventory/presentation/restock_form_sheet.dart';
+import '../../notifications/data/notifications_repository.dart';
 import '../../reports/presentation/expense_form_sheet.dart';
 import 'widgets/dashboard_quick_tools.dart';
 
@@ -45,6 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Future.wait([
       DashboardRepository.instance.fetchDashboardMetrics(),
       DistributionRepository.instance.fetchDistributions(),
+      NotificationsRepository.instance.fetchNotifications(),
     ]);
     if (mounted) setState(() => _isLoading = false);
   }
@@ -54,6 +56,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     await Future.wait([
       DashboardRepository.instance.fetchDashboardMetrics(),
       DistributionRepository.instance.fetchDistributions(),
+      NotificationsRepository.instance.fetchNotifications(),
     ]);
     if (mounted) setState(() => _isLoading = false);
   }
@@ -107,26 +110,61 @@ class _DashboardScreenState extends State<DashboardScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: AppDimensions.space16),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border),
-              ),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(
-                  Icons.notifications_none,
-                  size: 20,
-                  color: AppColors.textPrimary,
-                ),
-                onPressed: () {
-                  AppToast.info(title: 'Tidak ada notifikasi baru');
-                },
-                tooltip: 'Notifikasi',
-              ),
+            child: ValueListenableBuilder<int>(
+              valueListenable: NotificationsRepository.instance.unreadCountNotifier,
+              builder: (context, unreadCount, _) {
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.border),
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: Icon(
+                          unreadCount > 0 ? Icons.notifications_active : Icons.notifications_none,
+                          size: 20,
+                          color: unreadCount > 0 ? AppColors.brandPrimary : AppColors.textPrimary,
+                        ),
+                        onPressed: () => context.push('/notifikasi'),
+                        tooltip: unreadCount > 0 ? 'Notifikasi ($unreadCount baru)' : 'Notifikasi',
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFDC2626),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Center(
+                            child: Text(
+                              unreadCount > 9 ? '9+' : '$unreadCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w600,
+                                height: 1.0,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],

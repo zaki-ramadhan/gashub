@@ -5,6 +5,7 @@ import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/distribution/presentation/distribution_screen.dart';
 import '../../features/inventory/presentation/inventory_screen.dart';
 import '../../features/receivables/presentation/receivables_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import 'app_page_transitions.dart';
@@ -104,6 +105,14 @@ final GoRouter appRouter = GoRouter(
       pageBuilder: (context, state) => AppPageTransitions.slide(
         state: state,
         child: const CustomersScreen(),
+      ),
+    ),
+    GoRoute(
+      path: '/notifikasi',
+      parentNavigatorKey: _rootNavigatorKey,
+      pageBuilder: (context, state) => AppPageTransitions.slide(
+        state: state,
+        child: const NotificationsScreen(),
       ),
     ),
   ],
