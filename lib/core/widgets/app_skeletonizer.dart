@@ -11,7 +11,8 @@ class AppSkeletonizer extends StatelessWidget {
     super.key,
     required this.child,
     this.isLoading = true,
-    this.ignoreContainers = false,
+    this.ignoreContainers = true,
+    this.enableSwitchAnimation = true,
     this.containersColor,
     this.baseColor,
     this.highlightColor,
@@ -20,6 +21,7 @@ class AppSkeletonizer extends StatelessWidget {
   final Widget child;
   final bool isLoading;
   final bool ignoreContainers;
+  final bool enableSwitchAnimation;
   final Color? containersColor;
   final Color? baseColor;
   final Color? highlightColor;
@@ -28,6 +30,7 @@ class AppSkeletonizer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Skeletonizer(
       enabled: isLoading,
+      enableSwitchAnimation: enableSwitchAnimation,
       ignoreContainers: ignoreContainers,
       effect: ShimmerEffect(
         baseColor: baseColor ?? const Color(0xFFCCCCCC),

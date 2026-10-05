@@ -53,12 +53,14 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Arus kas bersih hari ini',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                  color: AppColors.textMuted,
+              Skeleton.keep(
+                child: const Text(
+                  'Arus kas bersih hari ini',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -100,27 +102,29 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
           const SizedBox(height: AppDimensions.space16),
 
           // 3. Three Circular Action Buttons (Fund / Deposit / Send style)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildCircularAction(
-                icon: Icons.add,
-                label: 'Kirim Gas',
-                onTap: widget.onDistribute,
-              ),
-              const SizedBox(width: 32),
-              _buildCircularAction(
-                icon: Icons.arrow_downward,
-                label: 'Tukar Truk',
-                onTap: widget.onRestock,
-              ),
-              const SizedBox(width: 32),
-              _buildCircularAction(
-                icon: Icons.arrow_upward,
-                label: 'Bensin/Upah',
-                onTap: widget.onExpense,
-              ),
-            ],
+          Skeleton.ignore(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildCircularAction(
+                  icon: Icons.add,
+                  label: 'Kirim Gas',
+                  onTap: widget.onDistribute,
+                ),
+                const SizedBox(width: 32),
+                _buildCircularAction(
+                  icon: Icons.arrow_downward,
+                  label: 'Tukar Truk',
+                  onTap: widget.onRestock,
+                ),
+                const SizedBox(width: 32),
+                _buildCircularAction(
+                  icon: Icons.arrow_upward,
+                  label: 'Bensin/Upah',
+                  onTap: widget.onExpense,
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: AppDimensions.space20),
 
@@ -139,12 +143,11 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Skeleton.replace(
-                            replacement: const Bone.circle(size: 17),
-                            child: Container(
+                      Skeleton.keep(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
                               padding: const EdgeInsets.all(3),
                               decoration: const BoxDecoration(
                                 color: AppColors.brandAccent,
@@ -156,17 +159,17 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                                 color: AppColors.brandPrimary,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Kas Masuk',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w500,
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Kas Masuk',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -196,12 +199,11 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Skeleton.replace(
-                            replacement: const Bone.circle(size: 17),
-                            child: Container(
+                      Skeleton.keep(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
                               padding: const EdgeInsets.all(3),
                               decoration: const BoxDecoration(
                                 color: Color(0xFFFEE2E2),
@@ -213,17 +215,17 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
                                 color: AppColors.dangerText,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          const Text(
-                            'Kas Keluar',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                              fontWeight: FontWeight.w500,
+                            const SizedBox(width: 6),
+                            const Text(
+                              'Kas Keluar',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(

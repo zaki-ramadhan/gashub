@@ -41,6 +41,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) setState(() {});
   }
 
+  bool _hasLoadedOnce = false;
+
   Future<void> _loadInitialData() async {
     setState(() => _isLoading = true);
     await Future.wait([
@@ -48,17 +50,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       DistributionRepository.instance.fetchDistributions(),
       NotificationsRepository.instance.fetchNotifications(),
     ]);
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _hasLoadedOnce = true;
+      });
+    }
   }
 
   Future<void> _handleRefresh() async {
-    setState(() => _isLoading = true);
+    // Silent background refresh: keeps existing data visible without flashing skeleton
     await Future.wait([
       DashboardRepository.instance.fetchDashboardMetrics(),
       DistributionRepository.instance.fetchDistributions(),
       NotificationsRepository.instance.fetchNotifications(),
     ]);
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) setState(() {});
   }
 
   @override
@@ -197,45 +204,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   horizontal: AppDimensions.space16,
                   vertical: AppDimensions.space12,
                 ),
-                child: AppSkeletonizer(
-                  isLoading: _isLoading,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 1. Focal Hero Balance Card
-                      MetricHeroCard(
-                        netCashflow: _netCashflow,
-                        cashIn: _cashIn,
-                        cashOut: _cashOut,
-                        onDistribute: () => DistributionFormSheet.show(context),
-                        onRestock: () => RestockFormSheet.show(context),
-                        onExpense: () => ExpenseFormSheet.show(context),
-                      ),
-                      const SizedBox(height: AppDimensions.space12),
+                child: Builder(
+                  builder: (context) {
+                    final showSkeleton = _isLoading && !_hasLoadedOnce;
 
-                      // 2. Secondary Quick Tools Card (4 Menu Pendukung Utama)
-                      DashboardQuickTools(
-                        onCatatUtang: () => context.push('/piutang'),
-                        onStokGas: () => context.go('/stok'),
-                        onPelanggan: () => context.push('/warung'),
-                        onAturHarga: () => PriceSettingSheet.show(context),
-                      ),
-                      const SizedBox(height: AppDimensions.space16),
-
-                      // 3. Recent Transaction Section Header
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Distribusi Terkini',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // 1. Focal Hero Balance Card (Shimmer restricted to dynamic currency figures)
+                        AppSkeletonizer(
+                          isLoading: showSkeleton,
+                          child: MetricHeroCard(
+                            netCashflow: _netCashflow,
+                            cashIn: _cashIn,
+                            cashOut: _cashOut,
+                            onDistribute: () => DistributionFormSheet.show(context),
+                            onRestock: () => RestockFormSheet.show(context),
+                            onExpense: () => ExpenseFormSheet.show(context),
                           ),
-                          Skeleton.ignore(
-                            child: InkWell(
+                        ),
+                        const SizedBox(height: AppDimensions.space12),
+
+                        // 2. Secondary Quick Tools Card (100% outside skeleton: always crisp and interactive)
+                        DashboardQuickTools(
+                          onCatatUtang: () => context.push('/piutang'),
+                          onStokGas: () => context.go('/stok'),
+                          onPelanggan: () => context.push('/warung'),
+                          onAturHarga: () => PriceSettingSheet.show(context),
+                        ),
+                        const SizedBox(height: AppDimensions.space16),
+
+                        // 3. Recent Transaction Section Header (Static anchor outside skeleton)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Distribusi Terkini',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            InkWell(
                               onTap: () => context.go('/distribusi'),
                               borderRadius: BorderRadius.circular(
                                 AppDimensions.radiusPill,
@@ -262,44 +273,47 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AppDimensions.space10),
+                          ],
+                        ),
+                        const SizedBox(height: AppDimensions.space10),
 
-                      // 4. Standalone Pill-Shaped Transaction Cards
-                      if (!_isLoading && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(vertical: 24),
-                          alignment: Alignment.center,
-                          child: const Text(
-                            'Belum ada transaksi distribusi tercatat',
-                            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                          ),
-                        )
-                      else
-                        ...((_isLoading && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
-                                ? DistributionModel.skeleton()
-                                : DistributionRepository.instance.distributionsNotifier.value.take(3))
-                            .map((item) {
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: AppDimensions.space8),
-                            child: FlatTransactionRow(
-                              title: item.customerName,
-                              subtitle: item.itemsLabel,
-                              amount: AppFormatters.currency(item.amount),
-                              statusLabel: item.statusLabel,
-                              statusType: item.statusType,
-                              time: item.time,
-                              icon: Icons.person_outline,
-                              iconColor: AppColors.brandPrimary,
-                              iconBg: AppColors.canvas,
+                        // 4. Standalone Pill-Shaped Transaction Cards
+                        if (!showSkeleton && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
+                            alignment: Alignment.center,
+                            child: const Text(
+                              'Belum ada transaksi distribusi tercatat',
+                              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                             ),
-                          );
-                        }),
-                      const SizedBox(height: 96),
-                    ],
-                  ),
+                          )
+                        else
+                          ...((showSkeleton && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
+                                  ? DistributionModel.skeleton()
+                                  : DistributionRepository.instance.distributionsNotifier.value.take(3))
+                              .map((item) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: AppDimensions.space8),
+                              child: AppSkeletonizer(
+                                isLoading: showSkeleton,
+                                child: FlatTransactionRow(
+                                  title: item.customerName,
+                                  subtitle: item.itemsLabel,
+                                  amount: AppFormatters.currency(item.amount),
+                                  statusLabel: item.statusLabel,
+                                  statusType: item.statusType,
+                                  time: item.time,
+                                  icon: Icons.person_outline,
+                                  iconColor: AppColors.brandPrimary,
+                                  iconBg: AppColors.canvas,
+                                ),
+                              ),
+                            );
+                          }),
+                        const SizedBox(height: 96),
+                      ],
+                    );
+                  },
                 ),
               ),
             ],
