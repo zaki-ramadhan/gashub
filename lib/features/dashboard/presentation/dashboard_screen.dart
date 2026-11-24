@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/core.dart';
 import '../data/dashboard_repository.dart';
+import '../../customers/data/customers_repository.dart';
+import '../../customers/presentation/widgets/top_customers_card.dart';
 import '../../distribution/data/distribution_repository.dart';
-import '../../distribution/domain/distribution_model.dart';
-import '../../distribution/presentation/distribution_form_sheet.dart';
-import '../../inventory/presentation/price_setting_sheet.dart';
-import '../../inventory/presentation/restock_form_sheet.dart';
-import '../../notifications/data/notifications_repository.dart';
-import '../../reports/presentation/expense_form_sheet.dart';
-import 'widgets/dashboard_quick_tools.dart';
+import 'widgets/cashflow_history_sheet.dart';
+import 'widgets/dashboard_app_bar.dart';
+import 'widgets/dashboard_recent_sales_section.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -20,10 +17,10 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  // Gradient ends roughly at the vertical middle of MetricHeroCard.
   static const double _headerGradientHeight = 180;
 
   bool _isLoading = false;
+  late bool _hasLoadedOnce;
 
   int get _netCashflow => DashboardRepository.instance.cashflowSummaryNotifier.value.netCashflow;
   int get _cashIn => DashboardRepository.instance.cashflowSummaryNotifier.value.cashIn;
@@ -32,8 +29,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _hasLoadedOnce = CustomersRepository.instance.customersNotifier.value.isNotEmpty ||
+        DistributionRepository.instance.distributionsNotifier.value.isNotEmpty;
     DashboardRepository.instance.cashflowSummaryNotifier.addListener(_onRepoUpdated);
     DistributionRepository.instance.distributionsNotifier.addListener(_onRepoUpdated);
+    CustomersRepository.instance.customersNotifier.addListener(_onRepoUpdated);
     _loadInitialData();
   }
 
@@ -41,149 +41,69 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (mounted) setState(() {});
   }
 
-  bool _hasLoadedOnce = false;
-
   Future<void> _loadInitialData() async {
-    setState(() => _isLoading = true);
-    await Future.wait([
-      DashboardRepository.instance.fetchDashboardMetrics(),
-      DistributionRepository.instance.fetchDistributions(),
-      NotificationsRepository.instance.fetchNotifications(),
-    ]);
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-        _hasLoadedOnce = true;
-      });
+    if (!_hasLoadedOnce) {
+      setState(() => _isLoading = true);
+    }
+    try {
+      await Future.wait([
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+        DistributionRepository.instance.fetchDistributions(),
+        CustomersRepository.instance.fetchCustomers(),
+      ]).timeout(const Duration(seconds: 3));
+    } catch (e) {
+      debugPrint('Dashboard _loadInitialData error/timeout: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasLoadedOnce = true;
+        });
+      }
     }
   }
 
   Future<void> _handleRefresh() async {
-    // Silent background refresh: keeps existing data visible without flashing skeleton
-    await Future.wait([
-      DashboardRepository.instance.fetchDashboardMetrics(),
-      DistributionRepository.instance.fetchDistributions(),
-      NotificationsRepository.instance.fetchNotifications(),
-    ]);
-    if (mounted) setState(() {});
+    try {
+      await Future.wait([
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+        DistributionRepository.instance.fetchDistributions(),
+        CustomersRepository.instance.fetchCustomers(),
+      ]).timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('Dashboard _handleRefresh error/timeout: $e');
+    } finally {
+      if (mounted) setState(() {});
+    }
   }
 
   @override
   void dispose() {
     DashboardRepository.instance.cashflowSummaryNotifier.removeListener(_onRepoUpdated);
     DistributionRepository.instance.distributionsNotifier.removeListener(_onRepoUpdated);
+    CustomersRepository.instance.customersNotifier.removeListener(_onRepoUpdated);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        toolbarHeight: 56,
-        backgroundColor: AppColors.brandPrimary,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
-        automaticallyImplyLeading: false,
-        titleSpacing: AppDimensions.space16,
-        title: Builder(
-          builder: (context) {
-            final now = DateTime.now();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  AppFormatters.dayOfWeek(now),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white,
-                    height: 1.15,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  AppFormatters.fullDate(now),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w300,
-                    color: Colors.white.withValues(alpha: 0.82),
-                    height: 1.15,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppDimensions.space16),
-            child: ValueListenableBuilder<int>(
-              valueListenable: NotificationsRepository.instance.unreadCountNotifier,
-              builder: (context, unreadCount, _) {
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: IconButton(
-                        padding: EdgeInsets.zero,
-                        icon: Icon(
-                          unreadCount > 0 ? Icons.notifications_active : Icons.notifications_none,
-                          size: 20,
-                          color: unreadCount > 0 ? AppColors.brandPrimary : AppColors.textPrimary,
-                        ),
-                        onPressed: () => context.push('/notifikasi'),
-                        tooltip: unreadCount > 0 ? 'Notifikasi ($unreadCount baru)' : 'Notifikasi',
-                      ),
-                    ),
-                    if (unreadCount > 0)
-                      Positioned(
-                        top: -2,
-                        right: -2,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFDC2626),
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Center(
-                            child: Text(
-                              unreadCount > 9 ? '9+' : '$unreadCount',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w600,
-                                height: 1.0,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.brandPrimary,
-        child: SingleChildScrollView(
+    final topPadding = MediaQuery.paddingOf(context).top;
+    final showSkeleton = _isLoading && !_hasLoadedOnce;
+
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.brandPrimary,
+      backgroundColor: Colors.white,
+      edgeOffset: topPadding,
+      child: Scaffold(
+        appBar: const DashboardAppBar(),
+        body: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Stack(
             children: [
-              Positioned(
+              const Positioned(
                 top: 0,
                 left: 0,
                 right: 0,
@@ -204,116 +124,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   horizontal: AppDimensions.space16,
                   vertical: AppDimensions.space12,
                 ),
-                child: Builder(
-                  builder: (context) {
-                    final showSkeleton = _isLoading && !_hasLoadedOnce;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Focal Hero Balance Card (Shimmer restricted to dynamic currency figures)
-                        AppSkeletonizer(
-                          isLoading: showSkeleton,
-                          child: MetricHeroCard(
-                            netCashflow: _netCashflow,
-                            cashIn: _cashIn,
-                            cashOut: _cashOut,
-                            onDistribute: () => DistributionFormSheet.show(context),
-                            onRestock: () => RestockFormSheet.show(context),
-                            onExpense: () => ExpenseFormSheet.show(context),
-                          ),
-                        ),
-                        const SizedBox(height: AppDimensions.space12),
-
-                        // 2. Secondary Quick Tools Card (100% outside skeleton: always crisp and interactive)
-                        DashboardQuickTools(
-                          onCatatUtang: () => context.push('/piutang'),
-                          onStokGas: () => context.go('/stok'),
-                          onPelanggan: () => context.push('/warung'),
-                          onAturHarga: () => PriceSettingSheet.show(context),
-                        ),
-                        const SizedBox(height: AppDimensions.space16),
-
-                        // 3. Recent Transaction Section Header (Static anchor outside skeleton)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Distribusi Terkini',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () => context.go('/distribusi'),
-                              borderRadius: BorderRadius.circular(
-                                AppDimensions.radiusPill,
-                              ),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(
-                                    AppDimensions.radiusPill,
-                                  ),
-                                  border: Border.all(color: AppColors.border),
-                                ),
-                                child: const Text(
-                                  'Lihat semua',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppColors.brandPrimary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: AppDimensions.space10),
-
-                        // 4. Standalone Pill-Shaped Transaction Cards
-                        if (!showSkeleton && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(vertical: 24),
-                            alignment: Alignment.center,
-                            child: const Text(
-                              'Belum ada transaksi distribusi tercatat',
-                              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                            ),
-                          )
-                        else
-                          ...((showSkeleton && DistributionRepository.instance.distributionsNotifier.value.isEmpty)
-                                  ? DistributionModel.skeleton()
-                                  : DistributionRepository.instance.distributionsNotifier.value.take(3))
-                              .map((item) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: AppDimensions.space8),
-                              child: AppSkeletonizer(
-                                isLoading: showSkeleton,
-                                child: FlatTransactionRow(
-                                  title: item.customerName,
-                                  subtitle: item.itemsLabel,
-                                  amount: AppFormatters.currency(item.amount),
-                                  statusLabel: item.statusLabel,
-                                  statusType: item.statusType,
-                                  time: item.time,
-                                  icon: Icons.person_outline,
-                                  iconColor: AppColors.brandPrimary,
-                                  iconBg: AppColors.canvas,
-                                ),
-                              ),
-                            );
-                          }),
-                        const SizedBox(height: 96),
-                      ],
-                    );
-                  },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AppSkeletonizer(
+                      isLoading: showSkeleton,
+                      child: MetricHeroCard(
+                        netCashflow: _netCashflow,
+                        cashIn: _cashIn,
+                        cashOut: _cashOut,
+                        onCheckStock: () => context.go('/stok'),
+                        onReceivables: () => context.push('/piutang'),
+                        onCustomers: () => context.push('/warung'),
+                        onCashInTap: () => CashflowHistorySheet.show(context, initialFilter: 'Masuk'),
+                        onCashOutTap: () => CashflowHistorySheet.show(context, initialFilter: 'Keluar'),
+                      ),
+                    ),
+                    const SizedBox(height: AppDimensions.space16),
+                    TopCustomersCard(maxCount: 3, showSkeleton: showSkeleton),
+                    const SizedBox(height: AppDimensions.space16),
+                    DashboardRecentSalesSection(showSkeleton: showSkeleton),
+                    const SizedBox(height: 96),
+                  ],
                 ),
               ),
             ],

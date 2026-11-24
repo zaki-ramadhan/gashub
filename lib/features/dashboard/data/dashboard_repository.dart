@@ -1,16 +1,21 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../domain/cashflow_entry_model.dart';
 import '../domain/cashflow_summary.dart';
 
 /// Repository managing dashboard cashflow metrics and operational expenses via Supabase PostgreSQL.
 class DashboardRepository {
   DashboardRepository._() {
     fetchDashboardMetrics();
+    fetchCashflowEntries();
   }
   static final DashboardRepository instance = DashboardRepository._();
 
   final ValueNotifier<CashflowSummary> cashflowSummaryNotifier =
       ValueNotifier<CashflowSummary>(const CashflowSummary.zero());
+
+  final ValueNotifier<List<CashflowEntryModel>> cashflowEntriesNotifier =
+      ValueNotifier<List<CashflowEntryModel>>([]);
 
   Future<void> fetchDashboardMetrics() async {
     try {
@@ -40,6 +45,25 @@ class DashboardRepository {
     }
   }
 
+  Future<void> fetchCashflowEntries() async {
+    try {
+      final client = Supabase.instance.client;
+      final res = await client
+          .from('cashflow_entries')
+          .select('id, direction, category, source_type, source_id, business_date, created_at, amount, method, notes')
+          .order('business_date', ascending: false)
+          .order('created_at', ascending: false);
+
+      final List<CashflowEntryModel> entries = [];
+      for (final row in res as List<dynamic>) {
+        entries.add(CashflowEntryModel.fromJson(row as Map<String, dynamic>));
+      }
+      cashflowEntriesNotifier.value = entries;
+    } catch (e) {
+      debugPrint('Error fetching cashflow entries from Supabase: $e');
+    }
+  }
+
   Future<void> recordExpense({
     required int amount,
     required String notes,
@@ -61,7 +85,10 @@ class DashboardRepository {
         'notes': notes,
       });
 
-      await fetchDashboardMetrics();
+      await Future.wait([
+        fetchDashboardMetrics(),
+        fetchCashflowEntries(),
+      ]);
     } catch (e) {
       debugPrint('Error recording expense in Supabase: $e');
       rethrow;
