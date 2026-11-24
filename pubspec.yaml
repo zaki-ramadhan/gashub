@@ -44,6 +44,7 @@ dependencies:
   toastification: ^3.2.0
   page_transition: ^2.2.2
   shared_preferences: ^2.5.5
+  flutter_solar_icons: ^2.4.0
 
 dev_dependencies:
   flutter_test:
