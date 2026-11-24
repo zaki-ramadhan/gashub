@@ -17,7 +17,11 @@ class DashboardRepository {
   Future<void> fetchDashboardMetrics() async {
     try {
       final client = Supabase.instance.client;
-      final res = await client.from('cashflow_entries').select('amount, direction, business_date');
+      final today = DateTime.now().toIso8601String().split('T')[0];
+      final res = await client
+          .from('cashflow_entries')
+          .select('amount, direction, business_date')
+          .eq('business_date', today);
 
       int totalIn = 0;
       int totalOut = 0;

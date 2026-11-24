@@ -216,8 +216,9 @@ class ReportsRepository {
       if (c['direction'] == 'in') {
         cashIn += amt;
       } else if (c['direction'] == 'out') {
-        operationalCost += amt;
         final cat = c['category']?.toString().toLowerCase() ?? '';
+        if (cat == 'restock') continue;
+        operationalCost += amt;
         if (cat.contains('bensin') || cat.contains('transport')) {
           transportCost += amt;
         } else {

@@ -1,6 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/core.dart';
+import '../../dashboard/data/dashboard_repository.dart';
+import '../../distribution/data/distribution_repository.dart';
+import '../../receivables/data/receivables_repository.dart';
 import '../domain/customer_model.dart';
 
 /// Repository managing partner store directory & per-customer ledger via Supabase PostgreSQL.
@@ -103,45 +106,87 @@ class CustomersRepository {
       final client = Supabase.instance.client;
       final recs = await client
           .from('receivables')
-          .select('id, remaining_amount, paid_amount')
+          .select('id, remaining_amount, paid_amount, source_distribution_id')
           .eq('customer_id', customerId)
-          .neq('status', 'paid');
+          .neq('status', 'paid')
+          .order('created_at', ascending: true);
 
-      if (recs.isNotEmpty) {
-        final rec = recs.first;
-        final recId = rec['id'] as String;
-        final currentRemaining = (rec['remaining_amount'] as num).toInt();
-        final currentPaid = (rec['paid_amount'] as num).toInt();
+      int remainingToPay = paidAmount;
+      final today = DateTime.now().toIso8601String().split('T')[0];
 
-        final newRemaining = (currentRemaining - paidAmount).clamp(0, double.infinity).toInt();
-        final newPaid = currentPaid + paidAmount;
+      for (final r in recs as List<dynamic>) {
+        if (remainingToPay <= 0) break;
+        final row = r as Map<String, dynamic>;
+        final recId = row['id'] as String;
+        final currentRemaining = (row['remaining_amount'] as num).toInt();
+        final currentPaid = (row['paid_amount'] as num).toInt();
+        final sourceDistId = row['source_distribution_id'] as String?;
+
+        final payThis = remainingToPay >= currentRemaining ? currentRemaining : remainingToPay;
+        final newRemaining = currentRemaining - payThis;
+        final newPaid = currentPaid + payThis;
         final newStatus = newRemaining == 0 ? 'paid' : 'partial';
 
+        // 1. Update receivable
         await client.from('receivables').update({
           'remaining_amount': newRemaining,
           'paid_amount': newPaid,
           'status': newStatus,
         }).eq('id', recId);
 
-        if (newRemaining == 0) {
-          await client.from('distributions').update({
-            'payment_status': 'paid',
-          }).eq('customer_id', customerId);
-        }
+        final paymentNumber = 'PAY-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
-        final today = DateTime.now().toIso8601String().split('T')[0];
+        // 2. Record payment audit
+        await client.from('payments').insert({
+          'payment_number': paymentNumber,
+          'receivable_id': recId,
+          'customer_id': customerId,
+          'business_date': today,
+          'amount': payThis,
+          'method': 'cash',
+          'notes': 'Pelunasan piutang pelanggan',
+        });
+
+        // 3. Record cashflow entry
         await client.from('cashflow_entries').insert({
           'direction': 'in',
           'category': 'debt_payment',
           'source_type': 'receivable',
           'source_id': recId,
           'business_date': today,
-          'amount': paidAmount,
+          'amount': payThis,
           'method': 'cash',
           'notes': 'Pelunasan piutang pelanggan',
         });
+
+        // 4. Synchronize source distribution
+        if (sourceDistId != null) {
+          final dist = await client
+              .from('distributions')
+              .select('id, total, amount_paid')
+              .eq('id', sourceDistId)
+              .maybeSingle();
+          if (dist != null) {
+            final distTotal = (dist['total'] as num).toInt();
+            final distPaid = (dist['amount_paid'] as num).toInt() + payThis;
+            final distStatus = distPaid >= distTotal ? 'paid' : (distPaid > 0 ? 'partial' : 'unpaid');
+            await client.from('distributions').update({
+              'amount_paid': distPaid,
+              'payment_status': distStatus,
+            }).eq('id', sourceDistId);
+          }
+        }
+
+        remainingToPay -= payThis;
       }
-      await fetchCustomers();
+
+      await Future.wait([
+        fetchCustomers(),
+        ReceivablesRepository.instance.fetchReceivables(),
+        DistributionRepository.instance.fetchDistributions(),
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+      ]);
     } catch (e) {
       debugPrint('Error updating customer debt: $e');
       final list = List<CustomerModel>.from(customersNotifier.value);

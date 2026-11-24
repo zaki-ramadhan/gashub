@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/core.dart';
 import '../../customers/data/customers_repository.dart';
+import '../../dashboard/data/dashboard_repository.dart';
+import '../../distribution/data/distribution_repository.dart';
 import '../domain/receivable_model.dart';
 
 /// Repository managing outstanding customer debts and payment recording via Supabase PostgreSQL.
@@ -65,11 +67,12 @@ class ReceivablesRepository {
       // 1. Fetch current receivable
       final rec = await client
           .from('receivables')
-          .select('id, customer_id, remaining_amount, paid_amount')
+          .select('id, customer_id, remaining_amount, paid_amount, source_distribution_id')
           .eq('id', receivableId)
           .single();
 
       final customerId = rec['customer_id'] as String;
+      final sourceDistId = rec['source_distribution_id'] as String?;
       final currentRemaining = (rec['remaining_amount'] as num).toInt();
       final currentPaid = (rec['paid_amount'] as num).toInt();
 
@@ -85,9 +88,11 @@ class ReceivablesRepository {
       }).eq('id', receivableId);
 
       final today = DateTime.now().toIso8601String().split('T')[0];
+      final paymentNumber = 'PAY-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
 
       // 3. Record payment
       await client.from('payments').insert({
+        'payment_number': paymentNumber,
         'receivable_id': receivableId,
         'customer_id': customerId,
         'business_date': today,
@@ -108,9 +113,32 @@ class ReceivablesRepository {
         'notes': notes ?? 'Pembayaran cicilan / lunas piutang',
       });
 
-      // 5. Refresh both receivables and customers
-      await fetchReceivables();
-      await CustomersRepository.instance.fetchCustomers();
+      // 5. Synchronize source distribution status
+      if (sourceDistId != null) {
+        final dist = await client
+            .from('distributions')
+            .select('id, total, amount_paid')
+            .eq('id', sourceDistId)
+            .maybeSingle();
+        if (dist != null) {
+          final distTotal = (dist['total'] as num).toInt();
+          final distPaid = (dist['amount_paid'] as num).toInt() + amount;
+          final distStatus = distPaid >= distTotal ? 'paid' : (distPaid > 0 ? 'partial' : 'unpaid');
+          await client.from('distributions').update({
+            'amount_paid': distPaid,
+            'payment_status': distStatus,
+          }).eq('id', sourceDistId);
+        }
+      }
+
+      // 6. Refresh related state
+      await Future.wait([
+        fetchReceivables(),
+        CustomersRepository.instance.fetchCustomers(),
+        DistributionRepository.instance.fetchDistributions(),
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+      ]);
     } catch (e) {
       debugPrint('Error recording payment in Supabase: $e');
       rethrow;

@@ -206,6 +206,24 @@ class DistributionRepository {
     try {
       final client = Supabase.instance.client;
 
+      // 0. Protect financial integrity: Check if any installment payments exist
+      final rec = await client
+          .from('receivables')
+          .select('id, paid_amount')
+          .eq('source_distribution_id', distributionId)
+          .maybeSingle();
+
+      if (rec != null) {
+        final recId = rec['id'] as String;
+        final payments = await client
+            .from('payments')
+            .select('id')
+            .eq('receivable_id', recId);
+        if ((payments as List).isNotEmpty) {
+          throw Exception('Transaksi tidak dapat dibatalkan karena sudah memiliki riwayat cicilan/pembayaran piutang.');
+        }
+      }
+
       // 1. Delete associated cashflow entries
       await client.from('cashflow_entries').delete().eq('source_id', distributionId);
 

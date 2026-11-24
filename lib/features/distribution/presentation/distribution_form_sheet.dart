@@ -148,7 +148,7 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
         customerId: customer.id,
         items: [
           {
-            'product_id': '11111111-1111-1111-1111-111111111111',
+            'product_id': InventoryRepository.instance.defaultProductId,
             'quantity': _qty,
             'unit_price': _unitPrice,
           }
