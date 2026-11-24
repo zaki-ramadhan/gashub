@@ -28,14 +28,14 @@ class StatusBadge extends StatelessWidget {
 
     return Skeleton.replace(
       replacement: Bone(
-        width: 58,
-        height: 22,
+        width: 54,
+        height: 19,
         borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
       ),
       child: Container(
         padding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.space8,
-          vertical: AppDimensions.space4,
+          horizontal: 7.0,
+          vertical: 2.0,
         ),
         decoration: BoxDecoration(
           color: bg,
@@ -44,9 +44,10 @@ class StatusBadge extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: 12.0,
             fontWeight: FontWeight.w500,
             color: fg,
+            height: 1.15,
           ),
         ),
       ),

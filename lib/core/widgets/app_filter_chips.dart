@@ -32,20 +32,21 @@ class AppFilterChips<T> extends StatelessWidget {
             child: GestureDetector(
               onTap: () => onSelected(option),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: isSelected ? AppColors.brandPrimary : Colors.transparent,
+                  color: isSelected ? AppColors.lime : Colors.white,
                   borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
                   border: Border.all(
-                    color: isSelected ? AppColors.brandPrimary : AppColors.border,
+                    color: isSelected ? AppColors.forestGreen.withValues(alpha: 0.5) : AppColors.border,
+                    width: 1.0,
                   ),
                 ),
                 child: Text(
                   label,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: isSelected ? Colors.white : AppColors.textPrimary,
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    color: isSelected ? AppColors.brandPrimary : AppColors.textPrimary,
                   ),
                 ),
               ),

@@ -8,12 +8,17 @@ abstract final class AppColors {
   static const Color brandAccent = Color(0xFFDCFCE7);  // Pale Mint / Sage (Badge background, chip selections)
   static const Color brandSuccess = Color(0xFF16A34A); // Positive financial net, active indicator
 
+  // Extended Harmonious Green Palette Tokens (Bessonov System)
+  static const Color lime = Color(0xFFCFF57C);        // Vibrant soft lime (Active chips, selection highlights)
+  static const Color forestGreen = Color(0xFF2C5D2E); // Medium forest green (Secondary controls, toggle selectors)
+
   // Neutral Canvas & Surfaces
   static const Color canvas = Color(0xFFF0F1F3);       // Soft neutral background (#F0F1F3)
   static const Color surface = Color(0xFFFFFFFF);      // Crisp White (Card & sheets)
   static const Color border = Color(0xFFE5E7EB);       // Subtle, ultra-soft neutral border
   static const Color textPrimary = Color(0xFF0F172A);  // Dark Charcoal / Slate 900
-  static const Color textMuted = Color(0xFF64748B);    // Slate 500 (Captions, timestamps)
+  static const Color textSecondary = Color(0xFF334155); // Slate 700 (High-contrast labels)
+  static const Color textMuted = Color(0xFF475569);    // Slate 600 (Clear, high-contrast captions & timestamps)
 
   // Semantic Status Tokens
   static const Color successBg = Color(0xFFDCFCE7);

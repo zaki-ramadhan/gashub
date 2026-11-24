@@ -33,7 +33,7 @@ class DateSectionHeader extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 13,
+              fontSize: 14.5,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
             ),
@@ -42,7 +42,7 @@ class DateSectionHeader extends StatelessWidget {
             Text(
               effectiveSummary!,
               style: const TextStyle(
-                fontSize: 13,
+                fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),

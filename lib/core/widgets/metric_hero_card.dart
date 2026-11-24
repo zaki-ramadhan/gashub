@@ -1,286 +1,133 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_solar_icons/linear.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import '../formatters/app_formatters.dart';
+import 'metric_hero_actions_row.dart';
+import 'metric_hero_cashflow_row.dart';
 
-/// Focal Hero Balance Card matching the reference design layout:
-/// - Centered balance with eye toggle
-/// - 3 circular quick action buttons directly under the balance
-/// - Split Inflow / Outflow summary at the bottom with vertical separator
+/// Focal Hero Balance Card with persistent privacy toggle via SharedPreferences.
 class MetricHeroCard extends StatefulWidget {
   const MetricHeroCard({
     super.key,
     required this.netCashflow,
     required this.cashIn,
     required this.cashOut,
-    this.onDistribute,
-    this.onRestock,
-    this.onExpense,
+    this.onCheckStock,
+    this.onReceivables,
+    this.onCustomers,
+    this.onCashInTap,
+    this.onCashOutTap,
   });
 
   final int netCashflow;
   final int cashIn;
   final int cashOut;
-  final VoidCallback? onDistribute;
-  final VoidCallback? onRestock;
-  final VoidCallback? onExpense;
+  final VoidCallback? onCheckStock;
+  final VoidCallback? onReceivables;
+  final VoidCallback? onCustomers;
+  final VoidCallback? onCashInTap;
+  final VoidCallback? onCashOutTap;
 
   @override
   State<MetricHeroCard> createState() => _MetricHeroCardState();
 }
 
 class _MetricHeroCardState extends State<MetricHeroCard> {
+  static const String _prefKey = 'is_dashboard_balance_visible';
   bool _isVisible = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVisibilityPreference();
+  }
+
+  Future<void> _loadVisibilityPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getBool(_prefKey);
+      if (saved != null && mounted) setState(() => _isVisible = saved);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleVisibility() async {
+    final next = !_isVisible;
+    setState(() => _isVisible = next);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_prefKey, next);
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
     final isPositive = widget.netCashflow >= 0;
+    final isSkeleton = Skeletonizer.maybeOf(context)?.enabled ?? false;
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
         border: Border.all(color: AppColors.border, width: 1.0),
       ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space20,
-        vertical: AppDimensions.space20,
-      ),
+      padding: const EdgeInsets.all(AppDimensions.space20),
       child: Column(
         children: [
-          // 1. Centered "Available balance" + Eye Icon Toggle
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Skeleton.keep(
                 child: const Text(
-                  'Arus kas bersih hari ini',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                    color: AppColors.textMuted,
-                  ),
+                  'Sisa uang hari ini',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textMuted),
                 ),
               ),
               const SizedBox(width: 8),
               Skeleton.ignore(
                 child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isVisible = !_isVisible;
-                    });
-                  },
+                  onTap: _toggleVisibility,
                   borderRadius: BorderRadius.circular(16),
                   child: Padding(
                     padding: const EdgeInsets.all(4.0),
-                    child: Icon(
-                      _isVisible ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                      size: 17,
-                      color: AppColors.textPrimary,
-                    ),
+                    child: _isVisible
+                        ? const EyeLinearIcon(size: 17, color: AppColors.textPrimary)
+                        : const EyeClosedLinearIcon(size: 17, color: AppColors.textPrimary),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-
-          // 2. Large Centered Net Balance
-          Text(
-            _isVisible
-                ? AppFormatters.currency(widget.netCashflow)
-                : 'Rp ••••••••',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5,
-              color: isPositive ? AppColors.textPrimary : AppColors.dangerText,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              isSkeleton ? 'Rp 2.450.000' : (_isVisible ? AppFormatters.currency(widget.netCashflow) : 'Rp ******'),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.5,
+                color: isPositive ? AppColors.textPrimary : AppColors.dangerText,
+              ),
             ),
           ),
           const SizedBox(height: AppDimensions.space16),
-
-          // 3. Three Circular Action Buttons (Fund / Deposit / Send style)
-          Skeleton.ignore(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildCircularAction(
-                  icon: Icons.add,
-                  label: 'Kirim Gas',
-                  onTap: widget.onDistribute,
-                ),
-                const SizedBox(width: 32),
-                _buildCircularAction(
-                  icon: Icons.arrow_downward,
-                  label: 'Tukar Truk',
-                  onTap: widget.onRestock,
-                ),
-                const SizedBox(width: 32),
-                _buildCircularAction(
-                  icon: Icons.arrow_upward,
-                  label: 'Bensin/Upah',
-                  onTap: widget.onExpense,
-                ),
-              ],
-            ),
+          MetricHeroActionsRow(
+            onCheckStock: widget.onCheckStock,
+            onReceivables: widget.onReceivables,
+            onCustomers: widget.onCustomers,
           ),
           const SizedBox(height: AppDimensions.space20),
-
-          // 4. Subtle Inflow / Outflow Split Row
-          Container(
-            padding: const EdgeInsets.only(top: AppDimensions.space16),
-            decoration: const BoxDecoration(
-              border: Border(
-                top: BorderSide(color: AppColors.border, width: 1.0),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Inflow
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Skeleton.keep(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: AppColors.brandAccent,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_downward,
-                                size: 11,
-                                color: AppColors.brandPrimary,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Kas Masuk',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isVisible ? AppFormatters.currency(widget.cashIn) : 'Rp ••••••',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Vertical Divider
-                Container(
-                  height: 36,
-                  width: 1,
-                  color: AppColors.border,
-                ),
-
-                // Outflow
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Skeleton.keep(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(3),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFFEE2E2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.arrow_upward,
-                                size: 11,
-                                color: AppColors.dangerText,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Text(
-                              'Kas Keluar',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _isVisible ? AppFormatters.currency(widget.cashOut) : 'Rp ••••••',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCircularAction({
-    required IconData icon,
-    required String label,
-    required VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(30),
-      child: Column(
-        children: [
-          Skeleton.replace(
-            replacement: const Bone.circle(size: 48),
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: AppColors.canvas,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.border, width: 1.0),
-              ),
-              child: Icon(icon, size: 22, color: AppColors.brandPrimary),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+          MetricHeroCashflowRow(
+            cashIn: widget.cashIn,
+            cashOut: widget.cashOut,
+            isVisible: _isVisible,
+            isSkeleton: isSkeleton,
+            onCashInTap: widget.onCashInTap,
+            onCashOutTap: widget.onCashOutTap,
           ),
         ],
       ),

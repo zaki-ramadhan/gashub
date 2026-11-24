@@ -15,6 +15,9 @@ abstract final class AppTheme {
       useMaterial3: true,
       fontFamily: GoogleFonts.archivo().fontFamily,
       scaffoldBackgroundColor: AppColors.canvas,
+      splashFactory: NoSplash.splashFactory,
+      highlightColor: Colors.transparent,
+      splashColor: Colors.transparent,
       textTheme: archivoTheme,
       colorScheme: const ColorScheme(
         brightness: Brightness.light,
@@ -33,10 +36,10 @@ abstract final class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
-        toolbarHeight: 44,
-        iconTheme: const IconThemeData(color: AppColors.textPrimary),
+        toolbarHeight: 52,
+        iconTheme: const IconThemeData(color: AppColors.textPrimary, size: 24),
         titleTextStyle: GoogleFonts.archivo(
-          fontSize: 18,
+          fontSize: 19,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
@@ -55,12 +58,15 @@ abstract final class AppTheme {
           backgroundColor: AppColors.brandPrimary,
           foregroundColor: Colors.white,
           elevation: 0,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
+          splashFactory: NoSplash.splashFactory,
           minimumSize: const Size.fromHeight(AppDimensions.buttonHeight),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+            borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
           ),
           textStyle: const TextStyle(
-            fontSize: 14,
+            fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -69,25 +75,30 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: Colors.white,
+        prefixStyle: const TextStyle(
+          color: AppColors.textPrimary,
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
         hintStyle: const TextStyle(
           color: AppColors.textMuted,
-          fontSize: 14,
+          fontSize: 15,
           fontWeight: FontWeight.w400,
         ),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: AppDimensions.space20,
-          vertical: AppDimensions.space12,
+          horizontal: AppDimensions.space16,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
           borderSide: const BorderSide(color: AppColors.border),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
+          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
           borderSide: const BorderSide(color: AppColors.brandPrimary, width: 1.5),
         ),
       ),

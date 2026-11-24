@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
 
 /// Centralized input formatters to prevent corrupted, fatal, or malicious typing.
@@ -79,6 +80,25 @@ abstract final class AppInputFormatters {
     if (parsed == null || parsed < min) return min;
     return parsed;
   }
+
+  /// Clamps a numeric controller to a minimum positive value when focus is lost (blur).
+  /// If the current value is empty, 0, or below [min], it auto-converts to [min]
+  /// and formats with thousand separators.
+  static void clampOnBlur({
+    required TextEditingController controller,
+    required bool hasFocus,
+    int min = 1,
+    void Function()? onClamped,
+  }) {
+    if (!hasFocus) {
+      final current = parseNumber(controller.text, defaultValue: 0);
+      if (current < min) {
+        controller.text = ThousandsSeparatorInputFormatter.formatNumber(min);
+        controller.selection = TextSelection.collapsed(offset: controller.text.length);
+        onClamped?.call();
+      }
+    }
+  }
 }
 
 /// 3-digit thousand separator input formatter for Indonesian IDR & quantity numbers.
@@ -86,6 +106,20 @@ abstract final class AppInputFormatters {
 /// Properly handles cursor position on addition, deletion, and pasting.
 class ThousandsSeparatorInputFormatter extends TextInputFormatter {
   const ThousandsSeparatorInputFormatter();
+
+  /// Helper to format raw integer into dot-separated thousands string.
+  static String formatNumber(int value) {
+    final str = value.toString();
+    final chars = str.split('').reversed.toList();
+    final buffer = StringBuffer();
+    for (int i = 0; i < chars.length; i++) {
+      if (i > 0 && i % 3 == 0) {
+        buffer.write('.');
+      }
+      buffer.write(chars[i]);
+    }
+    return buffer.toString().split('').reversed.join();
+  }
 
   @override
   TextEditingValue formatEditUpdate(

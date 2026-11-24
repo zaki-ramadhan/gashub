@@ -20,6 +20,13 @@ abstract final class AppFormatters {
     return _currencyFormat.format(amount);
   }
 
+  /// Formats signed currency with explicit plus/minus sign without ever showing "+-", e.g. "+Rp 50.000" or "-Rp 50.000"
+  static String signedCurrency(int amount) {
+    if (amount > 0) return '+${currency(amount)}';
+    if (amount < 0) return '-${currency(amount.abs())}';
+    return currency(0);
+  }
+
   /// Formats quantity with Indonesian thousands separator, e.g. 1.250
   static String number(int value) {
     return _numberFormat.format(value);

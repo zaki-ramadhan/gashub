@@ -12,12 +12,14 @@ class AppBottomSheet extends StatelessWidget {
     required this.child,
     this.bottomAction,
     this.showDragHandle = true,
+    this.onBack,
   });
 
   final String title;
   final Widget child;
   final Widget? bottomAction;
   final bool showDragHandle;
+  final VoidCallback? onBack;
 
   /// Helper to display this bottom sheet with standard modal configuration.
   static Future<T?> show<T>({
@@ -25,6 +27,7 @@ class AppBottomSheet extends StatelessWidget {
     required String title,
     required Widget child,
     Widget? bottomAction,
+    VoidCallback? onBack,
   }) {
     return showModalBottomSheet<T>(
       context: context,
@@ -34,6 +37,7 @@ class AppBottomSheet extends StatelessWidget {
       builder: (ctx) => AppBottomSheet(
         title: title,
         bottomAction: bottomAction,
+        onBack: onBack,
         child: child,
       ),
     );
@@ -50,7 +54,7 @@ class AppBottomSheet extends StatelessWidget {
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppDimensions.radiusCard),
+          top: Radius.circular(AppDimensions.radiusLarge),
         ),
       ),
       child: SafeArea(
@@ -76,16 +80,30 @@ class AppBottomSheet extends StatelessWidget {
                 ),
               ],
 
-              // 2. Header: Title + Close Button
+              // 2. Header: Optional Back Button + Title
               Padding(
                 padding: const EdgeInsets.fromLTRB(
+                  AppDimensions.space8,
+                  AppDimensions.space4,
                   AppDimensions.space16,
-                  AppDimensions.space8,
-                  AppDimensions.space8,
-                  AppDimensions.space8,
+                  AppDimensions.space4,
                 ),
                 child: Row(
                   children: [
+                    if (onBack != null) ...[
+                      IconButton(
+                        onPressed: onBack,
+                        icon: const Icon(
+                          Icons.arrow_back_rounded,
+                          size: 22,
+                          color: AppColors.textPrimary,
+                        ),
+                        splashRadius: 20,
+                        tooltip: 'Kembali',
+                      ),
+                    ] else ...[
+                      const SizedBox(width: AppDimensions.space8),
+                    ],
                     Expanded(
                       child: Text(
                         title,
@@ -97,12 +115,6 @@ class AppBottomSheet extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 22, color: AppColors.textMuted),
-                      splashRadius: 20,
-                      tooltip: 'Tutup',
-                      onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
                     ),
                   ],
                 ),

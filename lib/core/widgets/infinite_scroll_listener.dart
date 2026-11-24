@@ -59,7 +59,7 @@ class _InfiniteScrollListenerState extends State<InfiniteScrollListener> {
   }
 }
 
-/// Standardized loading and end-of-list footer indicator for GasHub infinite lists.
+/// Standardized loading indicator footer for GasHub infinite lists.
 class PaginationLoadingIndicator extends StatelessWidget {
   const PaginationLoadingIndicator({
     super.key,
@@ -67,7 +67,7 @@ class PaginationLoadingIndicator extends StatelessWidget {
     this.hasMore = true,
     this.totalItems = 0,
     this.loadingMessage = 'Memuat data berikutnya...',
-    this.endMessage = 'Semua data telah ditampilkan',
+    this.endMessage,
     this.padding = const EdgeInsets.symmetric(vertical: 14),
   });
 
@@ -75,7 +75,7 @@ class PaginationLoadingIndicator extends StatelessWidget {
   final bool hasMore;
   final int totalItems;
   final String loadingMessage;
-  final String endMessage;
+  final String? endMessage;
   final EdgeInsetsGeometry padding;
 
   @override
@@ -99,28 +99,12 @@ class PaginationLoadingIndicator extends StatelessWidget {
               Text(
                 loadingMessage,
                 style: const TextStyle(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textMuted,
                 ),
               ),
             ],
-          ),
-        ),
-      );
-    }
-
-    if (!hasMore && totalItems > 0) {
-      return Padding(
-        padding: padding,
-        child: Center(
-          child: Text(
-            endMessage,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textMuted,
-            ),
           ),
         ),
       );

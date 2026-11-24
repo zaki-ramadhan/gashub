@@ -4,8 +4,9 @@ import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import 'status_badge.dart';
 
-/// Standalone pill-shaped transaction card.
-/// Replaces flat divided lists with distinct, separated UI cards.
+/// Clean, high-density flat transaction row.
+/// Pure textual layout without bulky capsule containers or decorative icon clutter.
+/// Adheres strictly to GasHub anti-card-slop directives (flat divided rows).
 class FlatTransactionRow extends StatelessWidget {
   const FlatTransactionRow({
     super.key,
@@ -15,14 +16,17 @@ class FlatTransactionRow extends StatelessWidget {
     this.statusLabel,
     this.statusType,
     this.time,
+    this.leadingWidget,
     this.icon,
+    this.iconWidget,
     this.iconColor,
     this.iconBg,
     this.amountColor,
     this.subtitleColor,
     this.trailingAction,
     this.onTap,
-    this.iconSize = 22.0,
+    this.showDivider = true,
+    this.iconSize = 20.0,
   });
 
   final String title;
@@ -31,43 +35,54 @@ class FlatTransactionRow extends StatelessWidget {
   final String? statusLabel;
   final BadgeType? statusType;
   final String? time;
+  final Widget? leadingWidget;
   final IconData? icon;
+  final Widget? iconWidget;
   final Color? iconColor;
   final Color? iconBg;
   final Color? amountColor;
   final Color? subtitleColor;
   final Widget? trailingAction;
   final VoidCallback? onTap;
+  final bool showDivider;
   final double iconSize;
 
   @override
   Widget build(BuildContext context) {
+    final hasIcon = icon != null || iconWidget != null;
+
     Widget content = Padding(
-      padding: EdgeInsets.only(
-        left: icon != null ? AppDimensions.space12 : AppDimensions.space20,
-        right: AppDimensions.space20,
-        top: AppDimensions.space12,
-        bottom: AppDimensions.space12,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppDimensions.space16,
+        vertical: 12.0,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (icon != null) ...[
+          if (leadingWidget != null) ...[
             Skeleton.replace(
-              replacement: const Bone.circle(size: 38),
+              replacement: const Bone.circle(size: 28),
+              child: leadingWidget!,
+            ),
+            const SizedBox(width: AppDimensions.space12),
+          ] else if (hasIcon) ...[
+            Skeleton.replace(
+              replacement: const Bone.circle(size: 36),
               child: Container(
-                width: 38,
-                height: 38,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   color: iconBg ?? AppColors.canvas,
                   shape: BoxShape.circle,
                   border: Border.all(color: AppColors.border, width: 1.0),
                 ),
-                child: Icon(
-                  icon,
-                  size: iconSize,
-                  color: iconColor ?? AppColors.brandPrimary,
-                ),
+                alignment: Alignment.center,
+                child: iconWidget ??
+                    Icon(
+                      icon,
+                      size: iconSize,
+                      color: iconColor ?? AppColors.brandPrimary,
+                    ),
               ),
             ),
             const SizedBox(width: AppDimensions.space12),
@@ -75,22 +90,23 @@ class FlatTransactionRow extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   title,
                   style: const TextStyle(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: AppColors.textPrimary,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(
                   subtitle,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 13,
                     color: subtitleColor ?? AppColors.textMuted,
                   ),
                   maxLines: 1,
@@ -106,21 +122,21 @@ class FlatTransactionRow extends StatelessWidget {
             const SizedBox(width: AppDimensions.space12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 if (amount.isNotEmpty)
                   Text(
                     amount,
                     style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
                       color: amountColor ?? AppColors.textPrimary,
                     ),
                   ),
                 if (statusLabel != null ||
                     time != null ||
                     trailingAction != null) ...[
-                  if (amount.isNotEmpty)
-                    const SizedBox(height: 4),
+                  if (amount.isNotEmpty) const SizedBox(height: 3),
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -134,7 +150,7 @@ class FlatTransactionRow extends StatelessWidget {
                         Text(
                           time!,
                           style: const TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.5,
                             color: AppColors.textMuted,
                           ),
                         ),
@@ -157,10 +173,8 @@ class FlatTransactionRow extends StatelessWidget {
     if (onTap != null) {
       content = Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
           child: content,
         ),
       );
@@ -169,8 +183,14 @@ class FlatTransactionRow extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-        border: Border.all(color: AppColors.border, width: 1.0),
+        border: showDivider
+            ? const Border(
+                bottom: BorderSide(
+                  color: AppColors.border,
+                  width: 1.0,
+                ),
+              )
+            : null,
       ),
       child: content,
     );

@@ -2,16 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 
 /// Centralized GasHub skeleton loading wrapper.
-/// Implements a 3-tier pure neutral monochromatic gray hierarchy (100% neutral, zero blue cast, identical to YouTube/Google skeleton):
-/// - Tier 1: Pure soft light gray (#F0F0F0) for parent cards and structural containers
-/// - Tier 2: Pure neutral transition (#E2E2E2) for animated shimmer sweep
-/// - Tier 3: Pure solid medium gray (#CCCCCC) for child elements (avatars, buttons, text bars, badges)
+/// Preserves parent white card containers, borders, and layouts while shimmering internal leaf elements.
 class AppSkeletonizer extends StatelessWidget {
   const AppSkeletonizer({
     super.key,
     required this.child,
     this.isLoading = true,
-    this.ignoreContainers = true,
+    this.ignoreContainers = false,
     this.enableSwitchAnimation = true,
     this.containersColor,
     this.baseColor,
@@ -22,7 +19,7 @@ class AppSkeletonizer extends StatelessWidget {
     super.key,
     required this.child,
     this.isLoading = true,
-    this.ignoreContainers = true,
+    this.ignoreContainers = false,
     this.enableSwitchAnimation = true,
     this.containersColor,
     this.baseColor,
@@ -44,12 +41,13 @@ class AppSkeletonizer extends StatelessWidget {
       return Skeletonizer.sliver(
         enabled: isLoading,
         ignoreContainers: ignoreContainers,
+        ignorePointers: false,
         effect: ShimmerEffect(
-          baseColor: baseColor ?? const Color(0xFFCCCCCC),
-          highlightColor: highlightColor ?? const Color(0xFFE2E2E2),
+          baseColor: baseColor ?? const Color(0xFFE2E8F0),
+          highlightColor: highlightColor ?? const Color(0xFFF8FAFC),
           duration: const Duration(milliseconds: 1400),
         ),
-        containersColor: containersColor ?? const Color(0xFFF0F0F0),
+        containersColor: containersColor,
         child: child,
       );
     }
@@ -57,12 +55,13 @@ class AppSkeletonizer extends StatelessWidget {
       enabled: isLoading,
       enableSwitchAnimation: enableSwitchAnimation,
       ignoreContainers: ignoreContainers,
+      ignorePointers: false,
       effect: ShimmerEffect(
-        baseColor: baseColor ?? const Color(0xFFCCCCCC),
-        highlightColor: highlightColor ?? const Color(0xFFE2E2E2),
+        baseColor: baseColor ?? const Color(0xFFE2E8F0),
+        highlightColor: highlightColor ?? const Color(0xFFF8FAFC),
         duration: const Duration(milliseconds: 1400),
       ),
-      containersColor: containersColor ?? const Color(0xFFF0F0F0),
+      containersColor: containersColor,
       child: child,
     );
   }

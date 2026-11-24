@@ -92,7 +92,7 @@ abstract final class AppToast {
           ? Text(
               description,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.w400,
                 color: Colors.white.withValues(alpha: 0.9),
               ),

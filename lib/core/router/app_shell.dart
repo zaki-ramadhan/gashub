@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_solar_icons/bold.dart';
+import 'package:flutter_solar_icons/linear.dart';
 import 'package:go_router/go_router.dart';
-import '../../features/distribution/presentation/distribution_form_sheet.dart';
+import '../widgets/global_create_sheet.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import 'animated_branch_container.dart';
@@ -30,13 +32,13 @@ class AppShell extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
           child: SizedBox(
-            height: 72,
+            height: 76,
             child: Stack(
               clipBehavior: Clip.none,
               alignment: Alignment.bottomCenter,
               children: [
                 Container(
-                  height: 60,
+                  height: 64,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
@@ -55,27 +57,31 @@ class AppShell extends StatelessWidget {
                       children: [
                         _buildNavItem(
                           index: 0,
-                          icon: Icons.home_outlined,
-                          activeIcon: Icons.home,
+                          iconBuilder: (isSelected) => isSelected
+                              ? const Home2BoldIcon(size: 24, color: AppColors.brandPrimary)
+                              : const Home2LinearIcon(size: 24, color: AppColors.textMuted),
                           label: 'Beranda',
                         ),
                         _buildNavItem(
                           index: 1,
-                          icon: Icons.local_shipping_outlined,
-                          activeIcon: Icons.local_shipping,
-                          label: 'Distribusi',
+                          iconBuilder: (isSelected) => isSelected
+                              ? const DeliveryBoldIcon(size: 24, color: AppColors.brandPrimary)
+                              : const DeliveryLinearIcon(size: 24, color: AppColors.textMuted),
+                          label: 'Penjualan',
                         ),
                         const SizedBox(width: 52),
                         _buildNavItem(
                           index: 2,
-                          icon: Icons.propane_tank_outlined,
-                          activeIcon: Icons.propane_tank,
+                          iconBuilder: (isSelected) => isSelected
+                              ? const BoxBoldIcon(size: 24, color: AppColors.brandPrimary)
+                              : const BoxLinearIcon(size: 24, color: AppColors.textMuted),
                           label: 'Stok',
                         ),
                         _buildNavItem(
                           index: 3,
-                          icon: Icons.bar_chart_outlined,
-                          activeIcon: Icons.bar_chart,
+                          iconBuilder: (isSelected) => isSelected
+                              ? const Chart2BoldIcon(size: 24, color: AppColors.brandPrimary)
+                              : const Chart2LinearIcon(size: 24, color: AppColors.textMuted),
                           label: 'Laporan',
                         ),
                       ],
@@ -85,19 +91,19 @@ class AppShell extends StatelessWidget {
                 Positioned(
                   top: 0,
                   child: GestureDetector(
-                    onTap: () => DistributionFormSheet.show(context),
+                    onTap: () => GlobalCreateSheet.show(context),
                     child: Container(
-                      width: 50,
-                      height: 50,
+                      width: 54,
+                      height: 54,
                       decoration: const BoxDecoration(
                         color: AppColors.brandPrimary,
                         shape: BoxShape.circle,
                       ),
                       child: const Center(
-                        child: Icon(
-                          Icons.add,
+                        child: AddLinearIcon(
                           color: Colors.white,
                           size: 26,
+                          strokeWidth: 2.2,
                         ),
                       ),
                     ),
@@ -113,8 +119,7 @@ class AppShell extends StatelessWidget {
 
   Widget _buildNavItem({
     required int index,
-    required IconData icon,
-    required IconData activeIcon,
+    required Widget Function(bool isSelected) iconBuilder,
     required String label,
   }) {
     final isSelected = navigationShell.currentIndex == index;
@@ -132,17 +137,15 @@ class AppShell extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                isSelected ? activeIcon : icon,
-                size: 22,
-                color: isSelected ? AppColors.brandPrimary : AppColors.textMuted,
-              ),
+              iconBuilder(isSelected),
               const SizedBox(height: 3),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 13.5,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                   color: isSelected ? AppColors.brandPrimary : AppColors.textMuted,
                 ),
               ),

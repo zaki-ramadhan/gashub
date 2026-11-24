@@ -39,7 +39,7 @@ class AppButton extends StatelessWidget {
         : (backgroundColor ?? AppColors.brandPrimary);
 
     final resolvedFg = isSecondary
-        ? (textColor ?? AppColors.brandPrimary)
+        ? (textColor ?? AppColors.forestGreen)
         : (textColor ?? Colors.white);
 
     final child = isLoading
@@ -78,6 +78,8 @@ class AppButton extends StatelessWidget {
         child: InkWell(
           onTap: isLoading ? null : onPressed,
           borderRadius: effectiveRadius,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space20),
             decoration: BoxDecoration(

@@ -160,16 +160,6 @@ class _AppTimePickerSheetState extends State<AppTimePickerSheet> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      size: 22,
-                      color: AppColors.textMuted,
-                    ),
-                    splashRadius: 20,
-                    tooltip: 'Tutup',
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
                 ],
               ),
             ),
