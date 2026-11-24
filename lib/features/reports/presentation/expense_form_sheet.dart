@@ -28,6 +28,8 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
   String _selectedCategory = 'Bensin Motor/Tossa';
+  String? _amountError;
+  String? _noteError;
   bool _isLoading = false;
 
   static const List<String> _categories = [
@@ -47,17 +49,30 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
 
   Future<void> _submit() async {
     final amount = AppInputFormatters.parseNumber(_amountController.text);
+    final noteText = _noteController.text.trim();
+
+    String? amountErr;
+    String? noteErr;
 
     if (amount <= 0) {
-      AppToast.warning(title: 'Nominal belum diisi');
+      amountErr = 'Nominal pengeluaran wajib diisi';
+    }
+
+    if (_selectedCategory == 'Lain-lain' && noteText.isEmpty) {
+      noteErr = 'Keterangan wajib diisi untuk kategori Lain-lain';
+    }
+
+    if (amountErr != null || noteErr != null) {
+      setState(() {
+        _amountError = amountErr;
+        _noteError = noteErr;
+      });
       return;
     }
 
     setState(() => _isLoading = true);
     try {
-      final note = _noteController.text.trim().isNotEmpty
-          ? _noteController.text.trim()
-          : _selectedCategory;
+      final note = noteText.isNotEmpty ? noteText : _selectedCategory;
       await DashboardRepository.instance.recordExpense(
         amount: amount,
         notes: note,
@@ -101,7 +116,12 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
             children: _categories.map((cat) {
               final isSelected = _selectedCategory == cat;
               return GestureDetector(
-                onTap: () => setState(() => _selectedCategory = cat),
+                onTap: () {
+                  setState(() {
+                    _selectedCategory = cat;
+                    if (cat != 'Lain-lain') _noteError = null;
+                  });
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
@@ -149,8 +169,8 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
-              decoration: const InputDecoration(
-                prefixIcon: Padding(
+              decoration: InputDecoration(
+                prefixIcon: const Padding(
                   padding: EdgeInsets.only(left: 14, right: 6),
                   child: Text(
                     'Rp ',
@@ -161,26 +181,42 @@ class _ExpenseFormSheetState extends State<ExpenseFormSheet> {
                     ),
                   ),
                 ),
-                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                 hintText: '0',
-                hintStyle: TextStyle(
+                errorText: _amountError,
+                hintStyle: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textMuted,
                 ),
               ),
+              onChanged: (_) {
+                if (_amountError != null) setState(() => _amountError = null);
+              },
             ),
           ),
           const SizedBox(height: AppDimensions.space16),
 
           // 3. Catatan Pengeluaran
-          const InputLabel(
-            label: 'Keterangan / Catatan (Opsional)',
+          InputLabel(
+            label: _selectedCategory == 'Lain-lain'
+                ? 'Keterangan Pengeluaran'
+                : 'Keterangan / Catatan (Opsional)',
+            isRequired: _selectedCategory == 'Lain-lain',
           ),
           const SizedBox(height: 6),
           TextField(
             controller: _noteController,
             inputFormatters: [AppInputFormatters.cleanText],
+            decoration: InputDecoration(
+              hintText: _selectedCategory == 'Lain-lain'
+                  ? 'Contoh: Beli tali rafia, lakban, dll'
+                  : null,
+              errorText: _noteError,
+            ),
+            onChanged: (_) {
+              if (_noteError != null) setState(() => _noteError = null);
+            },
             maxLines: 2,
           ),
         ],

@@ -33,6 +33,7 @@ class ReceivablePaymentSheet extends StatefulWidget {
 
 class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
   final TextEditingController _payController = TextEditingController();
+  String? _amountError;
   bool _isSaving = false;
 
   @override
@@ -56,11 +57,11 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
         isLoading: _isSaving,
         onPressed: () async {
           if (enteredAmount <= 0) {
-            AppToast.warning(title: 'Masukkan nominal pembayaran');
+            setState(() => _amountError = 'Masukkan nominal pembayaran');
             return;
           }
           if (isOverpaid) {
-            AppToast.warning(title: 'Nominal melebihi sisa utang');
+            setState(() => _amountError = 'Nominal melebihi sisa utang');
             return;
           }
 
@@ -164,6 +165,7 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                 onTap: () {
                   setState(() {
                     _payController.text = AppFormatters.number(totalDebt);
+                    _amountError = null;
                   });
                 },
                 child: const Text(
@@ -191,14 +193,17 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
               controller: _payController,
               keyboardType: TextInputType.number,
               inputFormatters: [AppInputFormatters.thousands],
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                if (_amountError != null) setState(() => _amountError = null);
+                setState(() {});
+              },
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: AppColors.textPrimary,
               ),
-              decoration: const InputDecoration(
-                prefixIcon: Padding(
+              decoration: InputDecoration(
+                prefixIcon: const Padding(
                   padding: EdgeInsets.only(left: 14, right: 6),
                   child: Text(
                     'Rp ',
@@ -209,9 +214,10 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                     ),
                   ),
                 ),
-                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                 hintText: '0',
-                hintStyle: TextStyle(
+                errorText: _amountError,
+                hintStyle: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                   color: AppColors.textMuted,

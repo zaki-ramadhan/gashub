@@ -28,6 +28,7 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
   final TextEditingController _notesController = TextEditingController();
   int get _costPerUnit => InventoryRepository.instance.purchasePrice;
   bool _isLoading = false;
+  String? _qtyError;
 
   int get _qty => AppInputFormatters.parseQuantity(_qtyController.text, min: 1, defaultValue: 1);
 
@@ -35,6 +36,7 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
     final clamped = value.clamp(1, 9999);
     _qtyController.text = AppFormatters.number(clamped);
     _qtyController.selection = TextSelection.collapsed(offset: _qtyController.text.length);
+    if (_qtyError != null) _qtyError = null;
     setState(() {});
   }
 
@@ -46,8 +48,9 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
   }
 
   Future<void> _submit() async {
-    if (_qty <= 0) {
-      AppToast.warning(title: 'Jumlah tabung minimal 1');
+    final parsedQty = AppInputFormatters.parseNumber(_qtyController.text);
+    if (parsedQty <= 0) {
+      setState(() => _qtyError = 'Jumlah tabung minimal 1');
       return;
     }
 
@@ -129,11 +132,15 @@ class _RestockFormSheetState extends State<RestockFormSheet> {
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(vertical: 12),
+                    decoration: InputDecoration(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       isDense: true,
+                      errorText: _qtyError,
                     ),
-                    onChanged: (_) => setState(() {}),
+                    onChanged: (_) {
+                      if (_qtyError != null) setState(() => _qtyError = null);
+                      setState(() {});
+                    },
                   ),
                 ),
               ),

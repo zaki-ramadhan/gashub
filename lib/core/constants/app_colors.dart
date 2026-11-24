@@ -21,6 +21,7 @@ abstract final class AppColors {
   static const Color textMuted = Color(0xFF475569);    // Slate 600 (Clear, high-contrast captions & timestamps)
 
   // Semantic Status Tokens
+  static const Color error = Color(0xFFDC2626);        // Semantic error red
   static const Color successBg = Color(0xFFDCFCE7);
   static const Color successText = Color(0xFF15803D);
 

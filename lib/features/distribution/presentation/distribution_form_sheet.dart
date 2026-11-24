@@ -46,6 +46,9 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
 
   bool _isPaid = true;
   bool _isLoading = false;
+  String? _customerError;
+  String? _qtyError;
+  String? _paymentError;
 
   int get _qty => AppInputFormatters.parseQuantity(_qtyController.text, min: 1, defaultValue: 0);
   int get _subtotal => _qty * _unitPrice;
@@ -91,50 +94,53 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
       lastOrderDate: null,
       transactions: const [],
     );
-    await CustomersRepository.instance.addCustomer(newModel);
-    final match = _masterCustomers.cast<CustomerModel?>().firstWhere(
-      (c) => c?.name.toLowerCase() == clean.toLowerCase(),
-      orElse: () => CustomerModel(
-        id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
-        name: clean,
-        phone: '',
-        address: '',
-        owner: '',
-        activeDebt: 0,
-        totalCylinders: 0,
-        lastOrderDate: null,
-        transactions: const [],
-      ),
-    );
+    final created = await CustomersRepository.instance.addCustomer(newModel);
     if (mounted) {
       setState(() {
-        _selectedCustomer = match;
+        _selectedCustomer = created;
         _customerController.text = clean;
-        _customerController.selection = TextSelection.collapsed(offset: clean.length);
       });
     }
-    return match!;
+    return created;
   }
 
   Future<void> _save() async {
     final customerName = AppInputFormatters.trim(_customerController.text);
+    final parsedQty = AppInputFormatters.parseNumber(_qtyController.text);
+
+    String? custErr;
+    String? qtyErr;
+    String? payErr;
+
     if (customerName.isEmpty) {
-      AppToast.warning(title: 'Nama pelanggan belum diisi');
-      return;
+      custErr = 'Nama pelanggan wajib diisi';
     }
-    if (_qty < 1) {
-      AppToast.warning(title: 'Jumlah tabung minimal 1');
+    if (parsedQty < 1) {
+      qtyErr = 'Jumlah tabung minimal 1';
+    }
+    if (!_isPaid && _paidAmount > _subtotal) {
+      payErr = 'Uang muka melebihi total tagihan';
+    }
+
+    if (custErr != null || qtyErr != null || payErr != null) {
+      setState(() {
+        _customerError = custErr;
+        _qtyError = qtyErr;
+        _paymentError = payErr;
+      });
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      var customer = _selectedCustomer ??
-          _masterCustomers.cast<CustomerModel?>().firstWhere(
-            (c) => c?.name.toLowerCase() == customerName.toLowerCase(),
-            orElse: () => null,
-          );
+      var customer = _selectedCustomer;
+      if (customer == null || customer.name.toLowerCase() != customerName.toLowerCase()) {
+        customer = _masterCustomers.cast<CustomerModel?>().firstWhere(
+          (c) => c?.name.toLowerCase() == customerName.toLowerCase(),
+          orElse: () => null,
+        );
+      }
 
       customer ??= await _createNewCustomer(customerName);
 
@@ -188,23 +194,41 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
             controller: _customerController,
             masterCustomers: _masterCustomers,
             selectedCustomer: _selectedCustomer,
-            onSelectCustomer: (cust) => setState(() => _selectedCustomer = cust),
-            onCreateNewCustomer: _createNewCustomer,
+            errorText: _customerError,
+            onSelectCustomer: (cust) {
+              setState(() {
+                _selectedCustomer = cust;
+                if (_customerError != null) _customerError = null;
+              });
+            },
           ),
           const SizedBox(height: AppDimensions.space16),
           DistributionQuantityStepper(
             controller: _qtyController,
             unitPrice: _unitPrice,
             availableStock: _availableStock,
-            onChanged: () => setState(() {}),
+            errorText: _qtyError,
+            onChanged: () {
+              if (_qtyError != null) setState(() => _qtyError = null);
+              setState(() {});
+            },
           ),
           const SizedBox(height: AppDimensions.space16),
           DistributionPaymentSection(
             isPaid: _isPaid,
-            onPaidChanged: (val) => setState(() => _isPaid = val),
+            onPaidChanged: (val) {
+              setState(() {
+                _isPaid = val;
+                if (_paymentError != null) _paymentError = null;
+              });
+            },
             paidAmountController: _paidAmountController,
             remainingDebt: _remainingDebt,
-            onAmountChanged: () => setState(() {}),
+            errorText: _paymentError,
+            onAmountChanged: () {
+              if (_paymentError != null) setState(() => _paymentError = null);
+              setState(() {});
+            },
           ),
           const SizedBox(height: AppDimensions.space16),
           DistributionSummarySection(

@@ -9,12 +9,14 @@ class DistributionQuantityStepper extends StatelessWidget {
     required this.unitPrice,
     required this.availableStock,
     required this.onChanged,
+    this.errorText,
   });
 
   final TextEditingController controller;
   final int unitPrice;
   final int availableStock;
   final VoidCallback onChanged;
+  final String? errorText;
 
   int get _qty => AppInputFormatters.parseQuantity(controller.text, min: 1, defaultValue: 1);
 
@@ -67,9 +69,10 @@ class DistributionQuantityStepper extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
-                  decoration: const InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     isDense: true,
+                    errorText: errorText,
                   ),
                   onChanged: (_) => onChanged(),
                 ),

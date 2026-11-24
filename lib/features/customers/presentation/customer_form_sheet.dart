@@ -28,6 +28,8 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   final _ownerController = TextEditingController();
   final _phoneController = TextEditingController();
   final _addressController = TextEditingController();
+  String? _nameError;
+  String? _phoneError;
   bool _isLoading = false;
 
   @override
@@ -45,12 +47,29 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
     final phone = AppInputFormatters.trim(_phoneController.text);
     final address = AppInputFormatters.trim(_addressController.text);
 
+    String? nameErr;
+    String? phoneErr;
+
     if (name.isEmpty) {
-      AppToast.warning(title: 'Nama pelanggan wajib diisi');
-      return;
+      nameErr = 'Nama pelanggan wajib diisi';
+    } else if (name.length < 2) {
+      nameErr = 'Nama pelanggan minimal 2 karakter';
     }
+
     if (phone.isEmpty) {
-      AppToast.warning(title: 'Nomor WhatsApp wajib diisi');
+      phoneErr = 'Nomor WhatsApp wajib diisi';
+    } else {
+      final digits = phone.replaceAll(RegExp(r'\D'), '');
+      if (digits.length < 9) {
+        phoneErr = 'Nomor WhatsApp minimal 9 digit angka';
+      }
+    }
+
+    if (nameErr != null || phoneErr != null) {
+      setState(() {
+        _nameError = nameErr;
+        _phoneError = phoneErr;
+      });
       return;
     }
 
@@ -104,9 +123,13 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           TextFormField(
             controller: _nameController,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Contoh: Berkah / RM Padang',
+              errorText: _nameError,
             ),
+            onChanged: (_) {
+              if (_nameError != null) setState(() => _nameError = null);
+            },
           ),
           const SizedBox(height: AppDimensions.space12),
 
@@ -133,9 +156,13 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           TextFormField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Contoh: 0812-3456-7890',
+              errorText: _phoneError,
             ),
+            onChanged: (_) {
+              if (_phoneError != null) setState(() => _phoneError = null);
+            },
           ),
           const SizedBox(height: AppDimensions.space12),
 

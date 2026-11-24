@@ -5,9 +5,7 @@ import '../domain/customer_model.dart';
 
 /// Repository managing partner store directory & per-customer ledger via Supabase PostgreSQL.
 class CustomersRepository {
-  CustomersRepository._() {
-    fetchCustomers();
-  }
+  CustomersRepository._();
   static final CustomersRepository instance = CustomersRepository._();
 
   final ValueNotifier<List<CustomerModel>> customersNotifier =
@@ -74,23 +72,29 @@ class CustomersRepository {
     return list;
   }
 
-  Future<void> addCustomer(CustomerModel newCustomer) async {
+  Future<CustomerModel> addCustomer(CustomerModel newCustomer) async {
     try {
       final client = Supabase.instance.client;
-      await client.from('customers').insert({
+      final res = await client.from('customers').insert({
         'name': newCustomer.name,
         'phone': newCustomer.phone,
         'address': newCustomer.address,
         'type': 'warung',
         'notes': newCustomer.owner,
         'active': true,
-      });
+      }).select().single();
+      final created = CustomerModel.fromMap(res);
       await fetchCustomers();
+      return created;
     } catch (e) {
       debugPrint('Error adding customer to Supabase: $e');
+      final fallback = newCustomer.id.isEmpty
+          ? newCustomer.copyWith(id: 'temp_${DateTime.now().millisecondsSinceEpoch}')
+          : newCustomer;
       final updated = List<CustomerModel>.from(customersNotifier.value)
-        ..insert(0, newCustomer);
+        ..insert(0, fallback);
       customersNotifier.value = updated;
+      return fallback;
     }
   }
 

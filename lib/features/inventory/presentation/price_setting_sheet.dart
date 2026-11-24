@@ -24,7 +24,8 @@ class PriceSettingSheet extends StatefulWidget {
 class _PriceSettingSheetState extends State<PriceSettingSheet> {
   late final TextEditingController _sellingPriceController;
   late final TextEditingController _purchasePriceController;
-
+  String? _sellingPriceError;
+  String? _purchasePriceError;
   bool _isLoading = false;
 
   int get _sellingPrice => AppInputFormatters.parseNumber(_sellingPriceController.text, defaultValue: 19000);
@@ -58,8 +59,21 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
   }
 
   Future<void> _savePrice() async {
-    if (_sellingPrice <= 0 || _purchasePrice <= 0) {
-      AppToast.warning(title: 'Harga harus lebih dari 0');
+    String? sellErr;
+    String? buyErr;
+
+    if (_sellingPrice <= 0) {
+      sellErr = 'Harga jual harus lebih dari 0';
+    }
+    if (_purchasePrice <= 0) {
+      buyErr = 'Harga beli harus lebih dari 0';
+    }
+
+    if (sellErr != null || buyErr != null) {
+      setState(() {
+        _sellingPriceError = sellErr;
+        _purchasePriceError = buyErr;
+      });
       return;
     }
 
@@ -121,8 +135,8 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
               keyboardType: TextInputType.number,
               inputFormatters: [AppInputFormatters.thousands],
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: const InputDecoration(
-                prefixIcon: Padding(
+              decoration: InputDecoration(
+                prefixIcon: const Padding(
                   padding: EdgeInsets.only(left: 14, right: 6),
                   child: Text(
                     'Rp ',
@@ -133,10 +147,14 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
                     ),
                   ),
                 ),
-                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                errorText: _sellingPriceError,
                 isDense: true,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                if (_sellingPriceError != null) setState(() => _sellingPriceError = null);
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(height: AppDimensions.space16),
@@ -166,8 +184,8 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
               keyboardType: TextInputType.number,
               inputFormatters: [AppInputFormatters.thousands],
               style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-              decoration: const InputDecoration(
-                prefixIcon: Padding(
+              decoration: InputDecoration(
+                prefixIcon: const Padding(
                   padding: EdgeInsets.only(left: 14, right: 6),
                   child: Text(
                     'Rp ',
@@ -178,10 +196,14 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
                     ),
                   ),
                 ),
-                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+                errorText: _purchasePriceError,
                 isDense: true,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) {
+                if (_purchasePriceError != null) setState(() => _purchasePriceError = null);
+                setState(() {});
+              },
             ),
           ),
           const SizedBox(height: AppDimensions.space16),

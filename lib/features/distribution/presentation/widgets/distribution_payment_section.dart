@@ -10,6 +10,7 @@ class DistributionPaymentSection extends StatelessWidget {
     required this.paidAmountController,
     required this.remainingDebt,
     required this.onAmountChanged,
+    this.errorText,
   });
 
   final bool isPaid;
@@ -17,6 +18,7 @@ class DistributionPaymentSection extends StatelessWidget {
   final TextEditingController paidAmountController;
   final int remainingDebt;
   final VoidCallback onAmountChanged;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -94,6 +96,7 @@ class DistributionPaymentSection extends StatelessWidget {
                 ),
                 prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
                 hintText: '0',
+                errorText: errorText,
                 helperText: 'Sisa utang pelanggan: ${AppFormatters.currency(remainingDebt)}',
                 helperStyle: const TextStyle(
                   fontSize: 13,

@@ -101,6 +101,19 @@ abstract final class AppTheme {
           borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
           borderSide: const BorderSide(color: AppColors.brandPrimary, width: 1.5),
         ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+          borderSide: const BorderSide(color: AppColors.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
+        errorStyle: const TextStyle(
+          color: AppColors.error,
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+        ),
       ),
     );
   }

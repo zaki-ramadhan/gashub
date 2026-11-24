@@ -10,14 +10,14 @@ class DistributionCustomerSelector extends StatelessWidget {
     required this.masterCustomers,
     required this.selectedCustomer,
     required this.onSelectCustomer,
-    required this.onCreateNewCustomer,
+    this.errorText,
   });
 
   final TextEditingController controller;
   final List<CustomerModel> masterCustomers;
   final CustomerModel? selectedCustomer;
   final ValueChanged<CustomerModel?> onSelectCustomer;
-  final ValueChanged<String> onCreateNewCustomer;
+  final String? errorText;
 
   static const String generalCustomerName = 'Pelanggan Umum (Eceran)';
 
@@ -25,9 +25,6 @@ class DistributionCustomerSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final currentQuery = controller.text.trim();
     final cleanQuery = currentQuery.toLowerCase();
-    final isExactMatch = cleanQuery.isNotEmpty &&
-        (cleanQuery == generalCustomerName.toLowerCase() ||
-            masterCustomers.any((c) => c.name.toLowerCase() == cleanQuery));
 
     final filteredCustomers = cleanQuery.isEmpty
         ? masterCustomers.take(6).toList()
@@ -51,6 +48,7 @@ class DistributionCustomerSelector extends StatelessWidget {
           decoration: InputDecoration(
             hintText: 'Ketik nama pelanggan / warung...',
             prefixIcon: const Icon(Icons.person_outline, size: 20, color: AppColors.textMuted),
+            errorText: errorText,
             suffixIcon: controller.text.isNotEmpty
                 ? IconButton(
                     icon: const Icon(Icons.clear, size: 16, color: AppColors.textMuted),
@@ -95,37 +93,6 @@ class DistributionCustomerSelector extends StatelessWidget {
                 },
               ),
               const SizedBox(width: 6),
-
-              // Add New Customer Action Button if typed name doesn't match
-              if (!isExactMatch && currentQuery.isNotEmpty) ...[
-                GestureDetector(
-                  onTap: () => onCreateNewCustomer(currentQuery),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: AppColors.canvas,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.add, size: 15, color: AppColors.textPrimary),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Tambah "$currentQuery"',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 6),
-              ],
 
               // Registered Customer Chips
               ...filteredCustomers.map((cust) {
