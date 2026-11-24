@@ -15,21 +15,41 @@ class InventoryRepository {
   final ValueNotifier<List<StockLogItem>> stockLogsNotifier =
       ValueNotifier<List<StockLogItem>>([]);
 
-  int get sellingPrice => stockSummaryNotifier.value.sellingPrice;
+  int get sellingPrice {
+    try {
+      final dynamic val = stockSummaryNotifier.value.sellingPrice;
+      if (val is int && val > 0) return val;
+      return 19000;
+    } catch (_) {
+      return 19000;
+    }
+  }
+
+  int get purchasePrice {
+    try {
+      final dynamic val = stockSummaryNotifier.value.purchasePrice;
+      if (val is int && val > 0) return val;
+      return 16000;
+    } catch (_) {
+      return 16000;
+    }
+  }
 
   Future<void> fetchInventory() async {
     try {
       final client = Supabase.instance.client;
 
-      // 1. Fetch 3kg Product Price
+      // 1. Fetch 3kg Product Prices
       int sellingPrice = 19000;
+      int purchasePrice = 16000;
       final productsRes = await client
           .from('products')
-          .select('id, selling_price')
+          .select('id, selling_price, purchase_price')
           .eq('variant', 'Subsidi 3kg')
           .maybeSingle();
       if (productsRes != null) {
         sellingPrice = (productsRes['selling_price'] as num?)?.toInt() ?? 19000;
+        purchasePrice = (productsRes['purchase_price'] as num?)?.toInt() ?? 16000;
       }
 
       // 2. Fetch Stock Movements
@@ -78,6 +98,7 @@ class InventoryRepository {
         empty: empty,
         loaned: loaned,
         sellingPrice: sellingPrice,
+        purchasePrice: purchasePrice,
       );
 
       stockLogsNotifier.value = logs;
@@ -86,17 +107,30 @@ class InventoryRepository {
     }
   }
 
-  Future<void> updateSellingPrice(int newPrice) async {
+  Future<void> updatePrices({
+    required int sellingPrice,
+    required int purchasePrice,
+  }) async {
     try {
       final client = Supabase.instance.client;
       await client
           .from('products')
-          .update({'selling_price': newPrice})
+          .update({
+            'selling_price': sellingPrice,
+            'purchase_price': purchasePrice,
+          })
           .eq('variant', 'Subsidi 3kg');
       await fetchInventory();
     } catch (e) {
-      debugPrint('Error updating selling price: $e');
+      debugPrint('Error updating prices: $e');
     }
+  }
+
+  Future<void> updateSellingPrice(int newPrice) async {
+    return updatePrices(
+      sellingPrice: newPrice,
+      purchasePrice: purchasePrice,
+    );
   }
 
   Future<void> recordRestock({

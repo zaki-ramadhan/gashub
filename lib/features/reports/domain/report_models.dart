@@ -1,3 +1,5 @@
+import '../../../core/core.dart';
+
 /// Models representing aggregated performance statistics and report summaries.
 class ReportDataPoint {
   final String label;
@@ -22,6 +24,7 @@ class ReportPeriodSummary {
   final int cashIn;
   final int receivable;
   final int hpp;
+  final int unitPurchasePrice;
   final int operationalCost;
   final int transportCost;
   final int laborCost;
@@ -40,6 +43,7 @@ class ReportPeriodSummary {
     required this.cashIn,
     required this.receivable,
     required this.hpp,
+    this.unitPurchasePrice = 16000,
     required this.operationalCost,
     required this.transportCost,
     required this.laborCost,
@@ -136,25 +140,38 @@ class ReportPeriodSummary {
   String get shortCashIn {
     if (cashIn >= 1000000000) {
       final bill = cashIn / 1000000000;
-      return 'Rp ${bill.toStringAsFixed(1).replaceAll('.', ',')} M tunai';
+      return 'Kas: Rp ${bill.toStringAsFixed(1).replaceAll('.', ',')} M tunai';
     }
     final mil = cashIn / 1000000;
-    return 'Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt tunai';
+    return 'Kas: Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt tunai';
   }
 
   /// Short formatted text for net profit
   String get shortNetProfit {
-    if (netProfit >= 1000000000) {
-      final bill = netProfit / 1000000000;
-      return 'Rp ${bill.toStringAsFixed(1).replaceAll('.', ',')} M';
+    final absVal = netProfit.abs();
+    final sign = netProfit < 0 ? '-' : '';
+    if (absVal >= 1000000000) {
+      final bill = absVal / 1000000000;
+      return '${sign}Rp ${bill.toStringAsFixed(1).replaceAll('.', ',')} M';
     }
-    final mil = netProfit / 1000000;
-    return 'Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt';
+    if (absVal >= 1000000) {
+      final mil = absVal / 1000000;
+      return '${sign}Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt';
+    }
+    return AppFormatters.currency(netProfit);
   }
 
   /// Short formatted text for receivables
   String get shortReceivable {
-    final mil = receivable / 1000000;
-    return 'Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt';
+    if (receivable <= 0) return 'Rp 0';
+    if (receivable >= 1000000000) {
+      final bill = receivable / 1000000000;
+      return 'Rp ${bill.toStringAsFixed(1).replaceAll('.', ',')} M';
+    }
+    if (receivable >= 1000000) {
+      final mil = receivable / 1000000;
+      return 'Rp ${mil.toStringAsFixed(1).replaceAll('.', ',')} jt';
+    }
+    return AppFormatters.currency(receivable);
   }
 }

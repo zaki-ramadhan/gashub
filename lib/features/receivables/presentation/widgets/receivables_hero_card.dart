@@ -61,8 +61,8 @@ class ReceivablesHeroCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                'Dari $activeCount transaksi pelanggan aktif',
-                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                'Dari $activeCount nota pelanggan aktif',
+                style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
               ),
             ],
           ),

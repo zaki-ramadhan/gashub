@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../core/core.dart';
 
-/// Stock hero card summarizing total depot-owned LPG 3kg cylinders.
+/// Stock hero card designed for quick depot operations:
+/// - Prominent ready-to-sell gas count
+/// - Selling price with quick "Ubah" action
+/// - Clean bottom split: Tabung Kosong (siap tukar agen) vs Tabung di Pelanggan (dipinjam)
 class InventoryStockCard extends StatelessWidget {
   const InventoryStockCard({
     super.key,
@@ -20,8 +23,6 @@ class InventoryStockCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totalTabung = stockFilled + stockEmpty + stockLoaned;
-
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -32,160 +33,135 @@ class InventoryStockCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 1. Header: Label + Harga Jual (Ubah)
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Gas Siap Jual Hari Ini',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Harga: ${AppFormatters.currency(sellingPrice)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Skeleton.ignore(
+                    child: InkWell(
+                      onTap: onEditPrice,
+                      borderRadius: BorderRadius.circular(4),
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        child: Text(
+                          'Ubah',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.brandPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+
+          // 2. Hero Metric: Jumlah Tabung Isi Siap Jual
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${AppFormatters.number(stockFilled)} tabung',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+                color: AppColors.brandPrimary,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: AppDimensions.space16),
+          const Divider(height: 1, thickness: 1, color: AppColors.border),
+          const SizedBox(height: AppDimensions.space12),
+
+          // 3. Sub-metrics: Tabung Kosong vs Di Pelanggan
+          Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Semua Tabung Milik Pangkalan',
+                      'Tabung Kosong',
                       style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${AppFormatters.number(stockEmpty)} tabung',
+                      style: const TextStyle(
                         fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          'Harga Jual: ${AppFormatters.currency(sellingPrice)} / tabung',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                        const SizedBox(width: AppDimensions.space8),
-                        Skeleton.ignore(
-                          child: InkWell(
-                            onTap: onEditPrice,
-                            child: const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 2),
-                              child: Text(
-                                'Ubah',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.brandPrimary,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+              ),
+              Container(width: 1, height: 32, color: AppColors.border),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Di Pelanggan',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${AppFormatters.number(stockLoaned)} tabung',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppDimensions.space16),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          const SizedBox(height: AppDimensions.space16),
-
-          // 3 Kolom Posisi Fisik Tabung
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetricTile(
-                  label: 'Isi di Rumah',
-                  count: '$stockFilled',
-                  sub: 'Siap dikirim',
-                  color: AppColors.brandPrimary,
-                ),
-              ),
-              Container(width: 1, height: 44, color: AppColors.border),
-              Expanded(
-                child: _buildMetricTile(
-                  label: 'Kosong di Rumah',
-                  count: '$stockEmpty',
-                  sub: 'Nunggu truk',
-                  color: AppColors.warningText,
-                ),
-              ),
-              Container(width: 1, height: 44, color: AppColors.border),
-              Expanded(
-                child: _buildMetricTile(
-                  label: 'Ada di Pelanggan',
-                  count: '$stockLoaned',
-                  sub: 'Sedang dipinjam',
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppDimensions.space12),
-
-          // Keterangan Gamblang Untuk Pengguna Awam
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.info_outline,
-                  size: 16,
-                  color: AppColors.textMuted,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Total kepemilikan tabung besi pangkalan: $stockFilled isi + $stockEmpty kosong + $stockLoaned di pelanggan = $totalTabung tabung.',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                      height: 1.3,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMetricTile({
-    required String label,
-    required String count,
-    required String sub,
-    required Color color,
-  }) {
-    return Column(
-      children: [
-        Text(
-          count,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        Text(
-          sub,
-          style: const TextStyle(
-            fontSize: 12,
-            color: AppColors.textMuted,
-          ),
-        ),
-      ],
     );
   }
 }

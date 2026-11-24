@@ -114,9 +114,9 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${item.invoiceNumber} • ${AppFormatters.date(item.date)}',
+                      '${item.invoiceNumber} | ${AppFormatters.date(item.date)}',
                       style: const TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 13,
                         color: AppColors.textMuted,
                       ),
                     ),
@@ -130,7 +130,7 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                   const Text(
                     'Sisa utang saat ini',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 13,
                       color: AppColors.textMuted,
                     ),
                   ),
@@ -156,13 +156,9 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Nominal yang dibayar (Rp)',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textPrimary,
-                ),
+              const InputLabel(
+                label: 'Nominal yang dibayar (Rp)',
+                isRequired: true,
               ),
               GestureDetector(
                 onTap: () {
@@ -173,7 +169,7 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                 child: const Text(
                   'Lunasi Penuh',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: AppColors.brandPrimary,
                   ),
@@ -182,23 +178,44 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
             ],
           ),
           const SizedBox(height: 6),
-          TextField(
-            controller: _payController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [AppInputFormatters.thousands],
-            onChanged: (_) => setState(() {}),
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
-            decoration: const InputDecoration(
-              prefixText: 'Rp ',
-              hintText: '0',
-              hintStyle: TextStyle(
+          Focus(
+            onFocusChange: (hasFocus) {
+              AppInputFormatters.clampOnBlur(
+                controller: _payController,
+                hasFocus: hasFocus,
+                min: 1,
+                onClamped: () => setState(() {}),
+              );
+            },
+            child: TextField(
+              controller: _payController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [AppInputFormatters.thousands],
+              onChanged: (_) => setState(() {}),
+              style: const TextStyle(
                 fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textPrimary,
+              ),
+              decoration: const InputDecoration(
+                prefixIcon: Padding(
+                  padding: EdgeInsets.only(left: 14, right: 6),
+                  child: Text(
+                    'Rp ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                hintText: '0',
+                hintStyle: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
           ),
@@ -209,7 +226,7 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
             const Text(
               'Ketik nominal yang dibayar pelanggan (bisa cicilan atau lunas).',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 color: AppColors.textMuted,
               ),
             )
@@ -228,7 +245,7 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                 Text(
                   'Nominal melebihi sisa utang (${AppFormatters.currency(totalDebt)})',
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: AppColors.dangerText,
                   ),
@@ -248,9 +265,9 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                 ),
                 const SizedBox(width: 6),
                 const Text(
-                  'Pelunasan penuh • Sisa utang: Rp 0 (Lunas)',
+                  'Pelunasan penuh | Sisa utang: Rp 0 (Lunas)',
                   style: TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 13,
                     fontWeight: FontWeight.w500,
                     color: Color(0xFF166534),
                   ),
@@ -271,9 +288,9 @@ class _ReceivablePaymentSheetState extends State<ReceivablePaymentSheet> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    'Cicilan sebagian • Sisa utang nanti: ${AppFormatters.currency(remainingAfter)}',
+                    'Bayar sebagian | Sisa tagihan nanti: ${AppFormatters.currency(remainingAfter)}',
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 13,
                       fontWeight: FontWeight.w500,
                       color: AppColors.warningText,
                     ),

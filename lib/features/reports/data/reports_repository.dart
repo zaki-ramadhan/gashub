@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import '../../inventory/data/inventory_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../domain/report_models.dart';
@@ -54,76 +55,111 @@ class ReportsRepository {
 
       final now = DateTime.now();
 
-      // --- TAB 0: MINGGU ---
-      final startOfWeek = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-      final endOfWeek = startOfWeek.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
-      final weeklySummary = _buildSummary(
-        id: 'week_current',
-        title: 'Minggu Ini',
-        comparisonText: 'Sinkron Langsung Supabase',
-        dateRangeLabel: '${DateFormat('d MMM', 'id_ID').format(startOfWeek)} – ${DateFormat('d MMM yyyy', 'id_ID').format(endOfWeek)}',
-        distributions: distList.where((d) {
+      // --- TAB 0: MINGGU (4 Minggu Terakhir) ---
+      final List<ReportPeriodSummary> weeklySummaries = [];
+      for (int w = 0; w < 4; w++) {
+        final refDay = now.subtract(Duration(days: w * 7));
+        final startOfWeek = DateTime(refDay.year, refDay.month, refDay.day).subtract(Duration(days: refDay.weekday - 1));
+        final endOfWeek = startOfWeek.add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+        final isCurrentWeek = w == 0;
+        weeklySummaries.add(_buildSummary(
+          id: 'week_$w',
+          title: isCurrentWeek ? 'Minggu Ini' : (w == 1 ? 'Minggu Lalu' : '$w Minggu Lalu'),
+          comparisonText: isCurrentWeek ? 'Minggu Berjalan' : 'Riwayat Minggu',
+          dateRangeLabel: '${DateFormat('d MMM', 'id_ID').format(startOfWeek)} – ${DateFormat('d MMM yyyy', 'id_ID').format(endOfWeek)}',
+          distributions: distList.where((d) {
+            final dt = DateTime.tryParse(d['business_date']?.toString() ?? '');
+            return dt != null && !dt.isBefore(startOfWeek) && !dt.isAfter(endOfWeek);
+          }).toList(),
+          cashflows: cashflowList.where((c) {
+            final dt = DateTime.tryParse(c['business_date']?.toString() ?? '');
+            return dt != null && !dt.isBefore(startOfWeek) && !dt.isAfter(endOfWeek);
+          }).toList(),
+          totalReceivable: totalReceivable,
+          pointType: _PointType.weekDays,
+          referenceDate: startOfWeek,
+        ));
+      }
+
+      // --- TAB 1: BULAN (12 Bulan Mundur Dinamis) ---
+      final List<ReportPeriodSummary> monthlySummaries = [];
+      for (int m = 0; m < 12; m++) {
+        final targetMonthDate = DateTime(now.year, now.month - m, 1);
+        final lastDay = DateTime(targetMonthDate.year, targetMonthDate.month + 1, 0).day;
+        final isCurrentMonth = m == 0;
+
+        final mDist = distList.where((d) {
           final dt = DateTime.tryParse(d['business_date']?.toString() ?? '');
-          return dt != null && !dt.isBefore(startOfWeek) && !dt.isAfter(endOfWeek);
-        }).toList(),
-        cashflows: cashflowList.where((c) {
+          return dt != null && dt.year == targetMonthDate.year && dt.month == targetMonthDate.month;
+        }).toList();
+
+        final mCash = cashflowList.where((c) {
           final dt = DateTime.tryParse(c['business_date']?.toString() ?? '');
-          return dt != null && !dt.isBefore(startOfWeek) && !dt.isAfter(endOfWeek);
-        }).toList(),
-        totalReceivable: totalReceivable,
-        pointType: _PointType.weekDays,
-        referenceDate: startOfWeek,
-      );
+          return dt != null && dt.year == targetMonthDate.year && dt.month == targetMonthDate.month;
+        }).toList();
 
-      // --- TAB 1: BULAN ---
-      final currentMonthDist = distList.where((d) {
+        monthlySummaries.add(_buildSummary(
+          id: 'month_${targetMonthDate.year}_${targetMonthDate.month}',
+          title: isCurrentMonth
+              ? 'Bulan Ini (${DateFormat('MMMM yyyy', 'id_ID').format(targetMonthDate)})'
+              : DateFormat('MMMM yyyy', 'id_ID').format(targetMonthDate),
+          comparisonText: isCurrentMonth ? 'Bulan Berjalan' : 'Riwayat Bulanan',
+          dateRangeLabel: '1 – $lastDay ${DateFormat('MMM yyyy', 'id_ID').format(targetMonthDate)}',
+          distributions: mDist,
+          cashflows: mCash,
+          totalReceivable: totalReceivable,
+          pointType: _PointType.monthDays,
+          referenceDate: targetMonthDate,
+        ));
+      }
+
+      // --- TAB 2: TAHUN (Tahun Berjalan + Riwayat Tahun yang Ada Data atau 3 Tahun Mundur) ---
+      final Set<int> recordedYears = {now.year};
+      for (final d in distList) {
         final dt = DateTime.tryParse(d['business_date']?.toString() ?? '');
-        return dt != null && dt.year == now.year && dt.month == now.month;
-      }).toList();
-      final currentMonthCash = cashflowList.where((c) {
+        if (dt != null) recordedYears.add(dt.year);
+      }
+      for (final c in cashflowList) {
         final dt = DateTime.tryParse(c['business_date']?.toString() ?? '');
-        return dt != null && dt.year == now.year && dt.month == now.month;
-      }).toList();
+        if (dt != null) recordedYears.add(dt.year);
+      }
+      // Pastikan ada setidaknya 3 tahun mundur
+      for (int y = 0; y < 3; y++) {
+        recordedYears.add(now.year - y);
+      }
+      final sortedYears = recordedYears.toList()..sort((a, b) => b.compareTo(a));
 
-      final monthlySummary = _buildSummary(
-        id: 'month_${now.year}_${now.month}',
-        title: DateFormat('MMMM yyyy', 'id_ID').format(now),
-        comparisonText: 'Sinkron Langsung Supabase',
-        dateRangeLabel: '1 – ${DateTime(now.year, now.month + 1, 0).day} ${DateFormat('MMM yyyy', 'id_ID').format(now)}',
-        distributions: currentMonthDist,
-        cashflows: currentMonthCash,
-        totalReceivable: totalReceivable,
-        pointType: _PointType.monthDays,
-        referenceDate: DateTime(now.year, now.month, 1),
-      );
+      final List<ReportPeriodSummary> yearlySummaries = [];
+      for (final yr in sortedYears) {
+        final isCurrentYear = yr == now.year;
+        final yDist = distList.where((d) {
+          final dt = DateTime.tryParse(d['business_date']?.toString() ?? '');
+          return dt != null && dt.year == yr;
+        }).toList();
 
-      // --- TAB 2: TAHUN ---
-      final currentYearDist = distList.where((d) {
-        final dt = DateTime.tryParse(d['business_date']?.toString() ?? '');
-        return dt != null && dt.year == now.year;
-      }).toList();
-      final currentYearCash = cashflowList.where((c) {
-        final dt = DateTime.tryParse(c['business_date']?.toString() ?? '');
-        return dt != null && dt.year == now.year;
-      }).toList();
+        final yCash = cashflowList.where((c) {
+          final dt = DateTime.tryParse(c['business_date']?.toString() ?? '');
+          return dt != null && dt.year == yr;
+        }).toList();
 
-      final yearlySummary = _buildSummary(
-        id: 'year_${now.year}',
-        title: 'Tahun ${now.year}',
-        comparisonText: 'Sinkron Langsung Supabase',
-        dateRangeLabel: '1 Jan – 31 Des ${now.year}',
-        distributions: currentYearDist,
-        cashflows: currentYearCash,
-        totalReceivable: totalReceivable,
-        pointType: _PointType.yearMonths,
-        referenceDate: DateTime(now.year, 1, 1),
-      );
+        yearlySummaries.add(_buildSummary(
+          id: 'year_$yr',
+          title: isCurrentYear ? 'Tahun Ini ($yr)' : 'Tahun $yr',
+          comparisonText: isCurrentYear ? 'Tahun Berjalan' : 'Riwayat Tahunan',
+          dateRangeLabel: '1 Jan – 31 Des $yr',
+          distributions: yDist,
+          cashflows: yCash,
+          totalReceivable: totalReceivable,
+          pointType: _PointType.yearMonths,
+          referenceDate: DateTime(yr, 1, 1),
+        ));
+      }
 
       // --- TAB 3: SEMUA WAKTU ---
       final allTimeSummary = _buildSummary(
         id: 'all_time_live',
         title: 'Semua Periode',
-        comparisonText: 'Akumulasi Total Supabase',
+        comparisonText: 'Akumulasi Total',
         dateRangeLabel: 'Semua Waktu',
         distributions: distList,
         cashflows: cashflowList,
@@ -133,14 +169,14 @@ class ReportsRepository {
       );
 
       _tabOptions = {
-        0: [weeklySummary],
-        1: [monthlySummary],
-        2: [yearlySummary],
+        0: weeklySummaries,
+        1: monthlySummaries,
+        2: yearlySummaries,
         3: [allTimeSummary],
       };
 
-      liveSummaryNotifier.value = monthlySummary;
-      return monthlySummary;
+      liveSummaryNotifier.value = monthlySummaries.first;
+      return monthlySummaries.first;
     } catch (e) {
       debugPrint('Error calculating live report from Supabase: $e');
       return null;
@@ -192,8 +228,11 @@ class ReportsRepository {
       }
     }
 
-    // Modal HPP Pertamina ~16.000 / tabung 3kg
-    final hpp = totalSoldQty * 16000;
+    // Modal HPP dinamis dari purchase_price tabel products
+    final unitCost = InventoryRepository.instance.purchasePrice > 0
+        ? InventoryRepository.instance.purchasePrice
+        : 16000;
+    final hpp = totalSoldQty * unitCost;
 
     // Build data points
     final List<ReportDataPoint> points = [];
@@ -274,6 +313,7 @@ class ReportsRepository {
       cashIn: cashIn,
       receivable: totalReceivable,
       hpp: hpp,
+      unitPurchasePrice: unitCost,
       operationalCost: operationalCost,
       transportCost: transportCost,
       laborCost: laborCost,

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/core.dart';
 import '../../customers/data/customers_repository.dart';
 import '../domain/receivable_model.dart';
 
@@ -41,7 +42,7 @@ class ReceivablesRepository {
           originalAmount: (r['original_amount'] as num?)?.toInt() ?? 0,
           paidAmount: (r['paid_amount'] as num?)?.toInt() ?? 0,
           date: date,
-          invoiceNumber: '#${dist?['transaction_number'] ?? ''}',
+          invoiceNumber: dist?['transaction_number'] as String? ?? 'Tagihan ${AppFormatters.date(date)}',
           status: status,
         ));
       }

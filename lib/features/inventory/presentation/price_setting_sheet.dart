@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../data/inventory_repository.dart';
+import 'widgets/price_margin_card.dart';
 
 /// Modal bottom sheet for changing LPG 3kg selling and purchase prices.
 class PriceSettingSheet extends StatefulWidget {
@@ -22,20 +23,30 @@ class PriceSettingSheet extends StatefulWidget {
 
 class _PriceSettingSheetState extends State<PriceSettingSheet> {
   late final TextEditingController _sellingPriceController;
-  final _purchasePriceController = TextEditingController(text: AppFormatters.number(15750));
+  late final TextEditingController _purchasePriceController;
 
   bool _isLoading = false;
 
-  int get _sellingPrice => AppInputFormatters.parseNumber(_sellingPriceController.text);
-  int get _purchasePrice => AppInputFormatters.parseNumber(_purchasePriceController.text);
+  int get _sellingPrice => AppInputFormatters.parseNumber(_sellingPriceController.text, defaultValue: 19000);
+  int get _purchasePrice => AppInputFormatters.parseNumber(_purchasePriceController.text, defaultValue: 16000);
   int get _margin => _sellingPrice - _purchasePrice;
 
   @override
   void initState() {
     super.initState();
-    final livePrice = InventoryRepository.instance.sellingPrice;
+    int liveSelling = 19000;
+    int livePurchase = 16000;
+    try {
+      liveSelling = InventoryRepository.instance.sellingPrice;
+    } catch (_) {}
+    try {
+      livePurchase = InventoryRepository.instance.purchasePrice;
+    } catch (_) {}
     _sellingPriceController = TextEditingController(
-      text: AppFormatters.number(livePrice > 0 ? livePrice : 19000),
+      text: AppFormatters.number(liveSelling > 0 ? liveSelling : 19000),
+    );
+    _purchasePriceController = TextEditingController(
+      text: AppFormatters.number(livePurchase > 0 ? livePurchase : 16000),
     );
   }
 
@@ -53,7 +64,10 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
     }
 
     setState(() => _isLoading = true);
-    await InventoryRepository.instance.updateSellingPrice(_sellingPrice);
+    await InventoryRepository.instance.updatePrices(
+      sellingPrice: _sellingPrice,
+      purchasePrice: _purchasePrice,
+    );
     if (!mounted) return;
 
     Navigator.of(context, rootNavigator: true).pop();
@@ -62,8 +76,6 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final marginPercent = _sellingPrice > 0 ? ((_margin / _sellingPrice) * 100).toStringAsFixed(1) : '0';
-
     return AppBottomSheet(
       title: 'Atur Harga Gas',
       bottomAction: AppButton(
@@ -75,134 +87,109 @@ class _PriceSettingSheetState extends State<PriceSettingSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // 1. Info Sederhana
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.space12),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-              border: Border.all(color: AppColors.border, width: 1.0),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.info_outline, size: 18, color: AppColors.textMuted),
-                SizedBox(width: AppDimensions.space8),
-                Expanded(
-                  child: Text(
-                    'Harga acuan saat mencatat penjualan dan penerimaan pasokan.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                      height: 1.4,
-                    ),
-                  ),
-                ),
-              ],
+          const Text(
+            'Harga acuan saat mencatat penjualan dan penerimaan pasokan.',
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMuted,
             ),
           ),
           const SizedBox(height: AppDimensions.space16),
 
           // 2. Input Harga Jual Gas
-          const Text(
-            'Harga Jual Gas',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Harga Jual Gas',
+            isRequired: true,
           ),
           const SizedBox(height: 2),
           const Text(
             'Harga jual per tabung ke pelanggan.',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
           const SizedBox(height: AppDimensions.space8),
-          TextFormField(
-            controller: _sellingPriceController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [AppInputFormatters.thousands],
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            decoration: const InputDecoration(
-              prefixText: 'Rp ',
-              prefixStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-              isDense: true,
+          Focus(
+            onFocusChange: (hasFocus) {
+              AppInputFormatters.clampOnBlur(
+                controller: _sellingPriceController,
+                hasFocus: hasFocus,
+                min: 1,
+                onClamped: () => setState(() {}),
+              );
+            },
+            child: TextFormField(
+              controller: _sellingPriceController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [AppInputFormatters.thousands],
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              decoration: const InputDecoration(
+                prefixIcon: Padding(
+                  padding: EdgeInsets.only(left: 14, right: 6),
+                  child: Text(
+                    'Rp ',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: AppDimensions.space16),
 
           // 3. Input Harga Modal Beli
-          const Text(
-            'Harga Modal Beli',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Harga Modal Beli',
+            isRequired: true,
           ),
           const SizedBox(height: 2),
           const Text(
             'Harga tebus per tabung dari agen.',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
           const SizedBox(height: AppDimensions.space8),
-          TextFormField(
-            controller: _purchasePriceController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [AppInputFormatters.thousands],
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            decoration: const InputDecoration(
-              prefixText: 'Rp ',
-              prefixStyle: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary),
-              isDense: true,
+          Focus(
+            onFocusChange: (hasFocus) {
+              AppInputFormatters.clampOnBlur(
+                controller: _purchasePriceController,
+                hasFocus: hasFocus,
+                min: 1,
+                onClamped: () => setState(() {}),
+              );
+            },
+            child: TextFormField(
+              controller: _purchasePriceController,
+              keyboardType: TextInputType.number,
+              inputFormatters: [AppInputFormatters.thousands],
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              decoration: const InputDecoration(
+                prefixIcon: Padding(
+                  padding: EdgeInsets.only(left: 14, right: 6),
+                  child: Text(
+                    'Rp ',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                prefixIconConstraints: BoxConstraints(minWidth: 0, minHeight: 0),
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
           const SizedBox(height: AppDimensions.space16),
 
           // 4. Kalkulator Keuntungan Langsung
-          Container(
-            padding: const EdgeInsets.all(AppDimensions.space12),
-            decoration: BoxDecoration(
-              color: _margin >= 0 ? AppColors.brandAccent : const Color(0xFFFEE2E2),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-              border: Border.all(
-                color: _margin >= 0 ? AppColors.brandSuccess.withValues(alpha: 0.3) : AppColors.dangerText.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  _margin >= 0 ? Icons.trending_up : Icons.trending_down,
-                  color: _margin >= 0 ? AppColors.brandSuccess : AppColors.dangerText,
-                  size: 24,
-                ),
-                const SizedBox(width: AppDimensions.space12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _margin >= 0 ? 'Keuntungan per Tabung' : 'Rugi per Tabung',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: _margin >= 0 ? AppColors.brandPrimary : AppColors.dangerText,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${AppFormatters.currency(_margin)} ($marginPercent%)',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: _margin >= 0 ? AppColors.brandPrimary : AppColors.dangerText,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          PriceMarginCard(
+            margin: _margin,
+            sellingPrice: _sellingPrice,
           ),
         ],
       ),

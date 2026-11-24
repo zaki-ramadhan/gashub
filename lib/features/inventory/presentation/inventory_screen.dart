@@ -3,7 +3,6 @@ import '../../../core/core.dart';
 import '../data/inventory_repository.dart';
 import '../domain/stock_models.dart';
 import 'price_setting_sheet.dart';
-import 'restock_form_sheet.dart';
 import 'widgets/inventory_stock_card.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -84,22 +83,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
       (tx) => tx.date,
     );
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Stok Gas'),
-        actions: [
-          IconButton(
-            tooltip: 'Catat Pasokan',
-            icon: const Icon(Icons.add, color: AppColors.textPrimary),
-            onPressed: () => RestockFormSheet.show(context),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.brandPrimary,
-        child: InfiniteScrollListener(
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.brandPrimary,
+      backgroundColor: Colors.white,
+      edgeOffset: topPadding,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Stok Gas'),
+        ),
+      body: InfiniteScrollListener(
           onLoadMore: _paginationController.loadMore,
           isLoadingMore: _paginationController.isLoadingMore,
           hasMore: _paginationController.hasMore,
@@ -118,10 +113,10 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 children: [
                   // 1. Ringkasan Fisik Stok 3kg
                   InventoryStockCard(
-                    stockFilled: _stockFilled,
-                    stockEmpty: _stockEmpty,
-                    stockLoaned: _stockLoaned,
-                    sellingPrice: _sellingPrice,
+                    stockFilled: _isLoading && _stockFilled == 0 ? 85 : _stockFilled,
+                    stockEmpty: _isLoading && _stockEmpty == 0 ? 30 : _stockEmpty,
+                    stockLoaned: _isLoading && _stockLoaned == 0 ? 45 : _stockLoaned,
+                    sellingPrice: _isLoading && _sellingPrice == 0 ? 19000 : _sellingPrice,
                     onEditPrice: () => PriceSettingSheet.show(context),
                   ),
             const SizedBox(height: AppDimensions.space20),
@@ -137,14 +132,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
             const SizedBox(height: AppDimensions.space4),
             if (sortedDates.isEmpty && !_isLoading)
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                alignment: Alignment.center,
-                child: const Text(
-                  'Belum ada catatan mutasi tabung',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                ),
-              )
+              const AppEmptyState(message: 'Belum ada riwayat stok')
             else
               ...sortedDates.map((dateKey) {
               final itemsForDay = grouped[dateKey]!;
@@ -172,29 +160,45 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     trailingText: summaryText,
                     topPadding: AppDimensions.space12,
                   ),
-                  ...itemsForDay.map((item) {
-                    final isMasuk = item.isMasuk;
-                    final qty = item.qty;
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+                      border: Border.all(color: AppColors.border, width: 1.0),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: itemsForDay.asMap().entries.map((entry) {
+                        final itemIndex = entry.key;
+                        final item = entry.value;
+                        final isMasuk = item.isMasuk;
+                        final qty = item.qty;
+                        final isLast = itemIndex == itemsForDay.length - 1;
 
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: AppDimensions.space8),
-                      child: FlatTransactionRow(
-                        title: item.title,
-                        subtitle: item.time,
-                        amount: isMasuk ? '+$qty tabung' : '-$qty tabung',
-                        amountColor: isMasuk
-                            ? AppColors.brandSuccess
-                            : AppColors.dangerText,
-                        statusLabel: isMasuk ? 'Masuk' : 'Keluar',
-                        statusType: isMasuk
-                            ? BadgeType.success
-                            : BadgeType.danger,
-                        icon: isMasuk ? Icons.south_west : Icons.north_east,
-                        iconColor: AppColors.brandPrimary,
-                        iconBg: AppColors.canvas,
-                      ),
-                    );
-                  }),
+                        return FlatTransactionRow(
+                          title: item.title,
+                          subtitle: item.time,
+                          amount: isMasuk ? '+$qty tabung' : '-$qty tabung',
+                          amountColor: isMasuk
+                              ? AppColors.brandSuccess
+                              : AppColors.dangerText,
+                          statusLabel: isMasuk ? 'Masuk' : 'Keluar',
+                          statusType: isMasuk
+                              ? BadgeType.success
+                              : BadgeType.danger,
+                          showDivider: !isLast,
+                          icon: isMasuk
+                              ? Icons.south_west_rounded
+                              : Icons.north_east_rounded,
+                          iconColor: isMasuk
+                              ? AppColors.brandSuccess
+                              : AppColors.dangerText,
+                          iconBg: AppColors.canvas,
+                          iconSize: 18.0,
+                        );
+                      }).toList(),
+                    ),
+                  ),
                 ],
               );
             }),
@@ -204,7 +208,6 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 hasMore: _paginationController.hasMore,
                 totalItems: _paginationController.totalCount,
                 loadingMessage: 'Memuat catatan pasokan lainnya...',
-                endMessage: 'Semua catatan pasokan telah ditampilkan',
               ),
             const SizedBox(height: 96),
           ],

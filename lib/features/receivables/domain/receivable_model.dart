@@ -26,9 +26,27 @@ class ReceivableModel {
   final String invoiceNumber;
   final String status; // 'unpaid', 'partial', 'paid'
 
-  String get statusLabel => status == 'partial' ? 'Cicilan Sebagian' : 'Belum Bayar';
+  String get statusLabel {
+    switch (status) {
+      case 'paid':
+        return 'Lunas';
+      case 'partial':
+        return 'Sebagian';
+      default:
+        return 'Belum Bayar';
+    }
+  }
 
-  BadgeType get statusType => status == 'partial' ? BadgeType.warning : BadgeType.danger;
+  BadgeType get statusType {
+    switch (status) {
+      case 'paid':
+        return BadgeType.success;
+      case 'partial':
+        return BadgeType.warning;
+      default:
+        return BadgeType.danger;
+    }
+  }
 
   static List<ReceivableModel> skeleton() {
     final now = DateTime.now();
@@ -36,34 +54,34 @@ class ReceivableModel {
       ReceivableModel(
         id: 'rec_skel_1',
         customerId: '',
-        customerName: '------------------',
-        invoiceNumber: 'INV-----------',
+        customerName: 'Warung Barokah Sejahtera',
+        invoiceNumber: 'INV-2026-0001',
         date: now,
-        originalAmount: 0,
-        paidAmount: 0,
-        remainingAmount: 0,
-        status: 'unpaid',
+        originalAmount: 500000,
+        paidAmount: 200000,
+        remainingAmount: 300000,
+        status: 'partial',
       ),
       ReceivableModel(
         id: 'rec_skel_2',
         customerId: '',
-        customerName: '-----------------------',
-        invoiceNumber: 'INV-----------',
+        customerName: 'Toko Sumber Rezeki Makmur',
+        invoiceNumber: 'INV-2026-0002',
         date: now,
-        originalAmount: 0,
+        originalAmount: 450000,
         paidAmount: 0,
-        remainingAmount: 0,
+        remainingAmount: 450000,
         status: 'unpaid',
       ),
       ReceivableModel(
         id: 'rec_skel_3',
         customerId: '',
-        customerName: '---------------------',
-        invoiceNumber: 'INV-----------',
+        customerName: 'Pangkalan Gas Ibu Siti',
+        invoiceNumber: 'INV-2026-0003',
         date: now,
-        originalAmount: 0,
+        originalAmount: 360000,
         paidAmount: 0,
-        remainingAmount: 0,
+        remainingAmount: 360000,
         status: 'unpaid',
       ),
     ];

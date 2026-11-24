@@ -34,7 +34,7 @@ class ReportMetricCard extends StatelessWidget {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 12.5,
+              fontSize: 13.5,
               fontWeight: FontWeight.w500,
               color: AppColors.textMuted,
             ),

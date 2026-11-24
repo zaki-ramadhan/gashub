@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_solar_icons/bold.dart';
 import '../../../../core/core.dart';
 import '../../domain/report_models.dart';
 
@@ -50,7 +51,7 @@ class PeriodPickerSheet extends StatelessWidget {
               vertical: AppDimensions.space12,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.brandPrimary.withValues(alpha: 0.05) : Colors.transparent,
+              color: isSelected ? AppColors.lime.withValues(alpha: 0.35) : Colors.transparent,
               border: const Border(
                 bottom: BorderSide(color: AppColors.border, width: 0.5),
               ),
@@ -73,7 +74,7 @@ class PeriodPickerSheet extends StatelessWidget {
                       Text(
                         summary.dateRangeLabel,
                         style: const TextStyle(
-                          fontSize: 12,
+                          fontSize: 13,
                           color: AppColors.textMuted,
                         ),
                       ),
@@ -81,10 +82,9 @@ class PeriodPickerSheet extends StatelessWidget {
                   ),
                 ),
                 if (isSelected)
-                  const Icon(
-                    Icons.check,
+                  const CheckCircleBoldIcon(
                     size: 18,
-                    color: AppColors.brandPrimary,
+                    color: AppColors.forestGreen,
                   ),
               ],
             ),

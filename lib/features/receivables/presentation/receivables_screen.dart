@@ -14,6 +14,7 @@ class ReceivablesScreen extends StatefulWidget {
 
 class _ReceivablesScreenState extends State<ReceivablesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final AppDebouncer _searchDebouncer = AppDebouncer(duration: const Duration(milliseconds: 300));
   String _searchQuery = '';
   String _activeFilter = 'Semua';
   final PagedListController<ReceivableModel> _paginationController =
@@ -67,6 +68,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     ReceivablesRepository.instance.receivablesNotifier.removeListener(_onRepoUpdated);
     _paginationController.removeListener(_onPaginationUpdated);
     _paginationController.dispose();
+    _searchDebouncer.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -76,7 +78,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       if (_activeFilter == 'Belum Bayar' && item.statusLabel != 'Belum Bayar') {
         return false;
       }
-      if (_activeFilter == 'Cicilan Sebagian' && item.statusLabel != 'Cicilan Sebagian') {
+      if (_activeFilter == 'Sebagian' && item.statusLabel != 'Sebagian') {
         return false;
       }
 
@@ -106,7 +108,7 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
       if (_activeFilter == 'Belum Bayar' && item.statusLabel != 'Belum Bayar') {
         return false;
       }
-      if (_activeFilter == 'Cicilan Sebagian' && item.statusLabel != 'Cicilan Sebagian') {
+      if (_activeFilter == 'Sebagian' && item.statusLabel != 'Sebagian') {
         return false;
       }
 
@@ -122,16 +124,19 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
     }).toList();
 
     final totalOutstanding = filtered.fold<int>(0, (sum, i) => sum + i.remainingAmount);
+    final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Scaffold(
-      appBar: AppBar(
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.brandPrimary,
+      backgroundColor: Colors.white,
+      edgeOffset: topPadding,
+      child: Scaffold(
+        appBar: AppBar(
         title: const Text('Catatan Utang'),
         titleSpacing: 0,
       ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.brandPrimary,
-        child: InfiniteScrollListener(
+      body: InfiniteScrollListener(
           onLoadMore: _paginationController.loadMore,
           isLoadingMore: _paginationController.isLoadingMore,
           hasMore: _paginationController.hasMore,
@@ -155,50 +160,35 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextField(
+                      AppSearchBar(
                         controller: _searchController,
-                        style: const TextStyle(fontSize: 14),
-                        inputFormatters: [AppInputFormatters.cleanText],
+                        hintText: 'Cari nama pelanggan...',
+                        hasQuery: _searchQuery.isNotEmpty,
                         onChanged: (val) {
+                          _searchDebouncer.run(() {
+                            if (mounted) {
+                              setState(() {
+                                _searchQuery = val.trim();
+                                _syncFilteredData();
+                              });
+                            }
+                          });
+                        },
+                        onClear: () {
+                          _searchDebouncer.cancel();
+                          _searchController.clear();
                           setState(() {
-                            _searchQuery = val.trim();
+                            _searchQuery = '';
                             _syncFilteredData();
                           });
                         },
-                        decoration: InputDecoration(
-                          hintText: 'Cari nama pelanggan...',
-                          hintStyle: const TextStyle(
-                              fontSize: 14, color: AppColors.textMuted),
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(left: 12, right: 8),
-                            child: Icon(Icons.search,
-                                size: 20, color: AppColors.textMuted),
-                          ),
-                          prefixIconConstraints:
-                              const BoxConstraints(minWidth: 40, minHeight: 40),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear,
-                                      size: 18, color: AppColors.textMuted),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _syncFilteredData();
-                                    });
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                          fillColor: Colors.white,
-                        ),
                       ),
                       const SizedBox(height: AppDimensions.space10),
                       AppFilterChips<String>(
                         options: const [
                           'Semua',
                           'Belum Bayar',
-                          'Cicilan Sebagian'
+                          'Sebagian'
                         ],
                         selected: _activeFilter,
                         onSelected: (filter) {
@@ -216,14 +206,20 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
 
               // 3. Daftar Pelanggan Berhutang (Chunk Paginated)
               if (_paginationController.totalCount == 0 && !_isLoading)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Center(
-                    child: Text(
-                      'Tidak ada data piutang yang cocok.',
-                      style:
-                          TextStyle(fontSize: 13, color: AppColors.textMuted),
-                    ),
+                  child: AppEmptyState(
+                    message: _activeFilter == 'Semua' && _searchQuery.isEmpty
+                        ? 'Belum ada piutang'
+                        : 'Piutang tidak ditemukan',
+                    actionLabel: _searchQuery.isNotEmpty ? 'Reset pencarian' : null,
+                    onAction: _searchQuery.isNotEmpty
+                        ? () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                            _syncFilteredData();
+                          }
+                        : null,
                   ),
                 )
               else
@@ -243,63 +239,68 @@ class _ReceivablesScreenState extends State<ReceivablesScreen> {
                           AppDimensions.space16,
                           96,
                         ),
-                        sliver: SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) {
-                              if (index == displayItems.length) {
-                                if (_isLoading) return const SizedBox.shrink();
-                                return PaginationLoadingIndicator(
-                                  isLoadingMore:
-                                      _paginationController.isLoadingMore,
-                                  hasMore: _paginationController.hasMore,
-                                  totalItems: _paginationController.totalCount,
-                                  loadingMessage:
-                                      'Memuat data utang lainnya...',
-                                  endMessage:
-                                      'Semua data utang telah ditampilkan',
-                                );
-                              }
-                              final item = displayItems[index];
+                        sliver: SliverToBoxAdapter(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                  AppDimensions.radiusCard),
+                              border: Border.all(
+                                  color: AppColors.border, width: 1.0),
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Column(
+                              children: [
+                                ...displayItems.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final item = entry.value;
+                                  final isLast = index == displayItems.length - 1 &&
+                                      !_paginationController.hasMore;
 
-                              return Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: AppDimensions.space8),
-                                child: FlatTransactionRow(
-                                  title: item.customerName,
-                                  subtitle: AppFormatters.date(item.date),
-                                  subtitleColor: AppColors.textMuted,
-                                  amount: AppFormatters.currency(
-                                      item.remainingAmount),
-                                  amountColor: AppColors.dangerText,
-                                  statusLabel: item.statusLabel,
-                                  statusType: item.statusType,
-                                  icon: Icons.person_outline,
-                                  iconColor: AppColors.brandPrimary,
-                                  iconBg: AppColors.canvas,
-                                  trailingAction: Skeleton.ignore(
-                                    child: InkWell(
-                                      onTap: _isLoading
-                                          ? null
-                                          : () => ReceivablePaymentSheet.show(
-                                              context: context, item: item),
-                                      child: const Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 4, vertical: 2),
-                                        child: Text(
-                                          'Bayar',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppColors.brandPrimary,
+                                  return FlatTransactionRow(
+                                    title: item.customerName,
+                                    subtitle: AppFormatters.date(item.date),
+                                    subtitleColor: AppColors.textMuted,
+                                    amount: AppFormatters.currency(
+                                        item.remainingAmount),
+                                    amountColor: AppColors.dangerText,
+                                    statusLabel: item.statusLabel,
+                                    statusType: item.statusType,
+                                    showDivider: !isLast,
+                                    trailingAction: Skeleton.ignore(
+                                      child: InkWell(
+                                        onTap: _isLoading
+                                            ? null
+                                            : () => ReceivablePaymentSheet.show(
+                                                context: context, item: item),
+                                        child: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                              horizontal: 4, vertical: 2),
+                                          child: Text(
+                                            'Bayar',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w500,
+                                              color: AppColors.brandPrimary,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
+                                  );
+                                }),
+                                if (_paginationController.hasMore || !_isLoading)
+                                  PaginationLoadingIndicator(
+                                    isLoadingMore:
+                                        _paginationController.isLoadingMore,
+                                    hasMore: _paginationController.hasMore,
+                                    totalItems:
+                                        _paginationController.totalCount,
+                                    loadingMessage:
+                                        'Memuat data utang lainnya...',
                                   ),
-                                ),
-                              );
-                            },
-                            childCount: displayItems.length + 1,
+                              ],
+                            ),
                           ),
                         ),
                       );

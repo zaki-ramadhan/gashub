@@ -4,21 +4,26 @@ class StockSummary {
     required this.filled,
     required this.empty,
     required this.loaned,
-    required this.sellingPrice,
-  });
+    int? sellingPrice,
+    int? purchasePrice,
+  })  : sellingPrice = sellingPrice ?? 19000,
+        purchasePrice = purchasePrice ?? 16000;
 
   final int filled;
   final int empty;
   final int loaned;
   final int sellingPrice;
+  final int purchasePrice;
 
   int get totalTabung => filled + empty + loaned;
+  int get unitMargin => sellingPrice - purchasePrice;
 
   const StockSummary.zero()
       : filled = 0,
         empty = 0,
         loaned = 0,
-        sellingPrice = 19000;
+        sellingPrice = 19000,
+        purchasePrice = 16000;
 }
 
 /// Strongly typed domain entity for cylinder movement logs (in/out).
@@ -44,27 +49,27 @@ class StockLogItem {
     return [
       StockLogItem(
         id: 'skel_1',
-        title: '------------------',
-        qty: 0,
+        title: 'Pasokan Tabung Gas Masuk',
+        qty: 100,
         isMasuk: true,
         date: now,
-        time: '--:-- WIB',
+        time: '14:30 WIB',
       ),
       StockLogItem(
         id: 'skel_2',
-        title: '-----------------------',
-        qty: 0,
+        title: 'Penjualan ke Mitra Pangkalan',
+        qty: 25,
         isMasuk: false,
         date: now,
-        time: '--:-- WIB',
+        time: '11:15 WIB',
       ),
       StockLogItem(
         id: 'skel_3',
-        title: '---------------------',
-        qty: 0,
-        isMasuk: false,
+        title: 'Pasokan Tabung Gas Masuk',
+        qty: 50,
+        isMasuk: true,
         date: now,
-        time: '--:-- WIB',
+        time: '09:00 WIB',
       ),
     ];
   }
