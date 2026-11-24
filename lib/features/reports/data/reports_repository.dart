@@ -6,9 +6,7 @@ import '../domain/report_models.dart';
 
 /// Repository calculating real-time operational reports & PnL dynamically from Supabase PostgreSQL.
 class ReportsRepository {
-  ReportsRepository._() {
-    fetchLiveReport();
-  }
+  ReportsRepository._();
   static final ReportsRepository instance = ReportsRepository._();
 
   final ValueNotifier<ReportPeriodSummary?> liveSummaryNotifier =

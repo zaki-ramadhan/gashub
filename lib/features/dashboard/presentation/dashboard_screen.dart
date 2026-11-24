@@ -35,6 +35,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     DistributionRepository.instance.distributionsNotifier.addListener(_onRepoUpdated);
     CustomersRepository.instance.customersNotifier.addListener(_onRepoUpdated);
     _loadInitialData();
+
+    // Jaminan keamanan anti-freeze: setelah 2 detik paksa rilis skeleton apapun yang terjadi
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        if (mounted && _isLoading) {
+          setState(() {
+            _isLoading = false;
+            _hasLoadedOnce = true;
+          });
+        }
+      });
+    });
   }
 
   void _onRepoUpdated() {
@@ -48,10 +60,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     try {
       await Future.wait([
         DashboardRepository.instance.fetchDashboardMetrics(),
-        DashboardRepository.instance.fetchCashflowEntries(),
         DistributionRepository.instance.fetchDistributions(),
         CustomersRepository.instance.fetchCustomers(),
-      ]).timeout(const Duration(seconds: 3));
+      ]).timeout(const Duration(milliseconds: 1800));
     } catch (e) {
       debugPrint('Dashboard _loadInitialData error/timeout: $e');
     } finally {
@@ -127,18 +138,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    AppSkeletonizer(
-                      isLoading: showSkeleton,
-                      child: MetricHeroCard(
-                        netCashflow: _netCashflow,
-                        cashIn: _cashIn,
-                        cashOut: _cashOut,
-                        onCheckStock: () => context.go('/stok'),
-                        onReceivables: () => context.push('/piutang'),
-                        onCustomers: () => context.push('/warung'),
-                        onCashInTap: () => CashflowHistorySheet.show(context, initialFilter: 'Masuk'),
-                        onCashOutTap: () => CashflowHistorySheet.show(context, initialFilter: 'Keluar'),
-                      ),
+                    MetricHeroCard(
+                      netCashflow: _netCashflow,
+                      cashIn: _cashIn,
+                      cashOut: _cashOut,
+                      showSkeleton: showSkeleton,
+                      onCheckStock: () => context.go('/stok'),
+                      onReceivables: () => context.push('/piutang'),
+                      onCustomers: () => context.push('/warung'),
+                      onCashInTap: () => CashflowHistorySheet.show(context, initialFilter: 'Masuk'),
+                      onCashOutTap: () => CashflowHistorySheet.show(context, initialFilter: 'Keluar'),
                     ),
                     const SizedBox(height: AppDimensions.space16),
                     TopCustomersCard(maxCount: 3, showSkeleton: showSkeleton),

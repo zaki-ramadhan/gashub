@@ -34,11 +34,9 @@ class TopCustomersCard extends StatelessWidget {
 
         final topList = sorted.take(maxCount).toList();
 
-        return AppSkeletonizer(
-          isLoading: isLoading,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -83,7 +81,9 @@ class TopCustomersCard extends StatelessWidget {
             if (!isLoading && customers.isEmpty)
               const AppEmptyState(message: 'Belum ada pelanggan')
             else
-              Container(
+              AppSkeletonizer(
+                isLoading: isLoading,
+                child: Container(
                 width: double.infinity,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppDimensions.space12,
@@ -189,8 +189,8 @@ class TopCustomersCard extends StatelessWidget {
                 }).toList(),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       );
     },
     );

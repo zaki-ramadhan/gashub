@@ -9,9 +9,7 @@ import '../domain/distribution_model.dart';
 
 /// Repository managing LPG sales and distribution transactions via Supabase PostgreSQL.
 class DistributionRepository {
-  DistributionRepository._() {
-    fetchDistributions();
-  }
+  DistributionRepository._();
   static final DistributionRepository instance = DistributionRepository._();
 
   final ValueNotifier<List<DistributionModel>> distributionsNotifier =

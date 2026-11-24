@@ -6,9 +6,7 @@ import '../domain/receivable_model.dart';
 
 /// Repository managing outstanding customer debts and payment recording via Supabase PostgreSQL.
 class ReceivablesRepository {
-  ReceivablesRepository._() {
-    fetchReceivables();
-  }
+  ReceivablesRepository._();
   static final ReceivablesRepository instance = ReceivablesRepository._();
 
   final ValueNotifier<List<ReceivableModel>> receivablesNotifier =

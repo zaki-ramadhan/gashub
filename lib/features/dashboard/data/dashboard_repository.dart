@@ -5,10 +5,7 @@ import '../domain/cashflow_summary.dart';
 
 /// Repository managing dashboard cashflow metrics and operational expenses via Supabase PostgreSQL.
 class DashboardRepository {
-  DashboardRepository._() {
-    fetchDashboardMetrics();
-    fetchCashflowEntries();
-  }
+  DashboardRepository._();
   static final DashboardRepository instance = DashboardRepository._();
 
   final ValueNotifier<CashflowSummary> cashflowSummaryNotifier =

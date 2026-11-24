@@ -4,9 +4,7 @@ import '../domain/stock_models.dart';
 
 /// Repository managing LPG cylinder inventory and stock movements via Supabase PostgreSQL.
 class InventoryRepository {
-  InventoryRepository._() {
-    fetchInventory();
-  }
+  InventoryRepository._();
   static final InventoryRepository instance = InventoryRepository._();
 
   final ValueNotifier<StockSummary> stockSummaryNotifier =

@@ -5,6 +5,7 @@ import 'package:skeletonizer/skeletonizer.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
 import '../formatters/app_formatters.dart';
+import 'app_skeletonizer.dart';
 import 'metric_hero_actions_row.dart';
 import 'metric_hero_cashflow_row.dart';
 
@@ -15,6 +16,7 @@ class MetricHeroCard extends StatefulWidget {
     required this.netCashflow,
     required this.cashIn,
     required this.cashOut,
+    this.showSkeleton = false,
     this.onCheckStock,
     this.onReceivables,
     this.onCustomers,
@@ -25,6 +27,7 @@ class MetricHeroCard extends StatefulWidget {
   final int netCashflow;
   final int cashIn;
   final int cashOut;
+  final bool showSkeleton;
   final VoidCallback? onCheckStock;
   final VoidCallback? onReceivables;
   final VoidCallback? onCustomers;
@@ -65,7 +68,7 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
   @override
   Widget build(BuildContext context) {
     final isPositive = widget.netCashflow >= 0;
-    final isSkeleton = Skeletonizer.maybeOf(context)?.enabled ?? false;
+    final isSkeleton = widget.showSkeleton || (Skeletonizer.maybeOf(context)?.enabled ?? false);
 
     return Container(
       decoration: BoxDecoration(
@@ -79,38 +82,37 @@ class _MetricHeroCardState extends State<MetricHeroCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Skeleton.keep(
-                child: const Text(
-                  'Sisa uang hari ini',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textMuted),
-                ),
+              const Text(
+                'Sisa uang hari ini',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textMuted),
               ),
               const SizedBox(width: 8),
-              Skeleton.ignore(
-                child: InkWell(
-                  onTap: _toggleVisibility,
-                  borderRadius: BorderRadius.circular(16),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: _isVisible
-                        ? const EyeLinearIcon(size: 17, color: AppColors.textPrimary)
-                        : const EyeClosedLinearIcon(size: 17, color: AppColors.textPrimary),
-                  ),
+              InkWell(
+                onTap: _toggleVisibility,
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(4.0),
+                  child: _isVisible
+                      ? const EyeLinearIcon(size: 17, color: AppColors.textPrimary)
+                      : const EyeClosedLinearIcon(size: 17, color: AppColors.textPrimary),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              isSkeleton ? 'Rp 2.450.000' : (_isVisible ? AppFormatters.currency(widget.netCashflow) : 'Rp ******'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.5,
-                color: isPositive ? AppColors.textPrimary : AppColors.dangerText,
+          AppSkeletonizer(
+            isLoading: isSkeleton,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                _isVisible ? AppFormatters.currency(widget.netCashflow) : 'Rp ******',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.5,
+                  color: isPositive ? AppColors.textPrimary : AppColors.dangerText,
+                ),
               ),
             ),
           ),
