@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
 import '../../../../core/core.dart';
 
-/// Summary card displaying today's distribution settlement metrics.
+/// Summary card displaying today's sales, modal, and net margin (sisa).
 class DistributionSettlementCard extends StatelessWidget {
   const DistributionSettlementCard({
     super.key,
     required this.totalQty,
-    required this.paidAmount,
-    required this.debtAmount,
-    required this.marginAmount,
+    required this.totalSales,
+    required this.totalCost,
+    required this.netMargin,
     this.isLoading = false,
   });
 
   final int totalQty;
-  final int paidAmount;
-  final int debtAmount;
-  final int marginAmount;
+  final int totalSales;
+  final int totalCost;
+  final int netMargin;
   final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
+    final displayQty = isLoading && totalQty == 0 ? 15 : totalQty;
+    final displaySales = isLoading && totalSales == 0 ? 285000 : totalSales;
+    final displayCost = isLoading && totalCost == 0 ? 240000 : totalCost;
+    final displayMargin = isLoading && netMargin == 0 ? 45000 : netMargin;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(
         AppDimensions.space16,
@@ -44,17 +49,17 @@ class DistributionSettlementCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    'Rekap Distribusi Hari Ini',
+                    'Rekap Penjualan Hari Ini',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: 15.5,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
                     ),
                   ),
                   Text(
-                    '$totalQty tabung terdistribusi',
+                    '$displayQty tabung terjual',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 14,
                       color: AppColors.textMuted,
                     ),
                   ),
@@ -68,9 +73,9 @@ class DistributionSettlementCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Sudah Diterima',
+                          'Total Penjualan',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: AppColors.textMuted,
                           ),
                           maxLines: 1,
@@ -81,10 +86,10 @@ class DistributionSettlementCard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            AppFormatters.currency(paidAmount),
+                            AppFormatters.currency(displaySales),
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
                               color: AppColors.brandPrimary,
                             ),
                           ),
@@ -99,9 +104,9 @@ class DistributionSettlementCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Belum Dibayar',
+                          'Total Modal',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: AppColors.textMuted,
                           ),
                           maxLines: 1,
@@ -112,11 +117,11 @@ class DistributionSettlementCard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            AppFormatters.currency(debtAmount),
+                            AppFormatters.currency(displayCost),
                             style: const TextStyle(
-                              fontSize: 15,
+                              fontSize: 17,
                               fontWeight: FontWeight.w500,
-                              color: AppColors.dangerText,
+                              color: AppColors.textMuted,
                             ),
                           ),
                         ),
@@ -130,9 +135,9 @@ class DistributionSettlementCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Keuntungan',
+                          'Sisa Margin',
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             color: AppColors.textMuted,
                           ),
                           maxLines: 1,
@@ -143,11 +148,11 @@ class DistributionSettlementCard extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            AppFormatters.currency(marginAmount),
+                            AppFormatters.signedCurrency(displayMargin),
                             style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF16A34A),
                             ),
                           ),
                         ),

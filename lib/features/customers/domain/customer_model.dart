@@ -23,6 +23,32 @@ class CustomerTransaction {
     required this.statusLabel,
     required this.statusType,
   });
+
+  bool get isUnpaid => paidAmount < totalAmount;
+
+  CustomerTransaction copyWith({
+    String? id,
+    String? invoice,
+    DateTime? date,
+    String? items,
+    int? qty,
+    int? totalAmount,
+    int? paidAmount,
+    String? statusLabel,
+    BadgeType? statusType,
+  }) {
+    return CustomerTransaction(
+      id: id ?? this.id,
+      invoice: invoice ?? this.invoice,
+      date: date ?? this.date,
+      items: items ?? this.items,
+      qty: qty ?? this.qty,
+      totalAmount: totalAmount ?? this.totalAmount,
+      paidAmount: paidAmount ?? this.paidAmount,
+      statusLabel: statusLabel ?? this.statusLabel,
+      statusType: statusType ?? this.statusType,
+    );
+  }
 }
 
 /// Domain model representing a customer / partner warung.
@@ -50,6 +76,37 @@ class CustomerModel {
   });
 
   bool get hasDebt => activeDebt > 0;
+  String get displayName {
+    if (name.trim().isEmpty) return '-';
+    return name
+        .trim()
+        .split(' ')
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1)}')
+        .join(' ');
+  }
+  int get totalOrders => transactions.length;
+  int get totalSpending => transactions.fold<int>(0, (sum, tx) => sum + tx.totalAmount);
+  int get unpaidTransactionsCount {
+    final count = transactions.where((t) => t.isUnpaid).length;
+    return count > 0 ? count : (hasDebt ? 1 : 0);
+  }
+
+  /// Total cylinders ordered in current month
+  int get currentMonthCylinders {
+    final now = DateTime.now();
+    return transactions.where((tx) {
+      return tx.date.year == now.year && tx.date.month == now.month;
+    }).fold<int>(0, (sum, tx) => sum + tx.qty);
+  }
+
+  /// Total spending in current month
+  int get currentMonthSpending {
+    final now = DateTime.now();
+    return transactions.where((tx) {
+      return tx.date.year == now.year && tx.date.month == now.month;
+    }).fold<int>(0, (sum, tx) => sum + tx.totalAmount);
+  }
 
   CustomerModel copyWith({
     String? id,
@@ -115,7 +172,7 @@ class CustomerModel {
 
         txs.add(CustomerTransaction(
           id: d['id']?.toString() ?? '',
-          invoice: '#${d['transaction_number'] ?? ''}',
+          invoice: 'Penjualan',
           date: date,
           items: '$txQty tabung',
           qty: txQty,
@@ -141,5 +198,79 @@ class CustomerModel {
       lastOrderDate: latestDate,
       transactions: txs,
     );
+  }
+
+  static List<CustomerModel> skeleton() {
+    return [
+      CustomerModel(
+        id: 'skel_c1',
+        name: 'Warung Barokah Sejahtera',
+        owner: 'Hj. Siti Aminah',
+        phone: '081234567890',
+        address: 'Jl. Melati No. 12',
+        totalCylinders: 45,
+        activeDebt: 0,
+        transactions: List.generate(
+          6,
+          (i) => CustomerTransaction(
+            id: 'tx_skel_1_$i',
+            invoice: 'INV-00$i',
+            date: DateTime.now(),
+            items: '8 tabung',
+            qty: 8,
+            totalAmount: 135000,
+            paidAmount: 135000,
+            statusLabel: 'Lunas',
+            statusType: BadgeType.success,
+          ),
+        ),
+      ),
+      CustomerModel(
+        id: 'skel_c2',
+        name: 'Toko Sumber Rezeki Makmur',
+        owner: 'Pak Joko Santoso',
+        phone: '081298765432',
+        address: 'Jl. Mawar No. 5',
+        totalCylinders: 30,
+        activeDebt: 0,
+        transactions: List.generate(
+          4,
+          (i) => CustomerTransaction(
+            id: 'tx_skel_2_$i',
+            invoice: 'INV-00$i',
+            date: DateTime.now(),
+            items: '7 tabung',
+            qty: 7,
+            totalAmount: 135000,
+            paidAmount: 135000,
+            statusLabel: 'Lunas',
+            statusType: BadgeType.success,
+          ),
+        ),
+      ),
+      CustomerModel(
+        id: 'skel_c3',
+        name: 'Pangkalan Gas Mitra Mandiri',
+        owner: 'Ibu Ratna',
+        phone: '081311223344',
+        address: 'Jl. Kenanga No. 8',
+        totalCylinders: 20,
+        activeDebt: 0,
+        transactions: List.generate(
+          3,
+          (i) => CustomerTransaction(
+            id: 'tx_skel_3_$i',
+            invoice: 'INV-00$i',
+            date: DateTime.now(),
+            items: '6 tabung',
+            qty: 6,
+            totalAmount: 120000,
+            paidAmount: 120000,
+            statusLabel: 'Lunas',
+            statusType: BadgeType.success,
+          ),
+        ),
+      ),
+    ];
   }
 }

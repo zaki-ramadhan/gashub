@@ -3,11 +3,15 @@ import '../../../core/core.dart';
 import '../data/customers_repository.dart';
 import '../domain/customer_model.dart';
 import 'customer_detail_sheet.dart';
-import 'customer_form_sheet.dart';
 
 /// Screen listing partner stores & customers with search, debt status, and detailed history.
 class CustomersScreen extends StatefulWidget {
-  const CustomersScreen({super.key});
+  const CustomersScreen({
+    super.key,
+    this.initialFilter,
+  });
+
+  final String? initialFilter;
 
   @override
   State<CustomersScreen> createState() => _CustomersScreenState();
@@ -15,20 +19,23 @@ class CustomersScreen extends StatefulWidget {
 
 class _CustomersScreenState extends State<CustomersScreen> {
   final _searchController = TextEditingController();
+  final _searchDebouncer = AppDebouncer(duration: const Duration(milliseconds: 300));
   String _searchQuery = '';
-  String _activeFilter = 'Semua';
+  late String _activeFilter;
   bool _isLoading = false;
 
   static final List<CustomerModel> _placeholderCustomers = List.generate(
     6,
     (i) => CustomerModel(
       id: 'placeholder_$i',
-      name: '------------------------',
-      owner: '----------------',
-      phone: '------------',
-      address: '------------------------------',
-      activeDebt: 0,
-      totalCylinders: 0,
+      name: i == 0
+          ? 'Pangkalan Barokah H. Slamet'
+          : (i == 1 ? 'Warung Madura Pak Joko' : 'Toko Kelontong Berkah Ibu Ani'),
+      owner: i.isEven ? 'H. Slamet' : 'Pak Joko',
+      phone: '0812-3456-7890',
+      address: 'Jl. Raya Kp. Melayu No. 45',
+      activeDebt: i.isEven ? 475000 : 0,
+      totalCylinders: (i + 1) * 15,
       lastOrderDate: DateTime.now(),
       transactions: const [],
     ),
@@ -37,6 +44,7 @@ class _CustomersScreenState extends State<CustomersScreen> {
   @override
   void initState() {
     super.initState();
+    _activeFilter = widget.initialFilter ?? 'Semua';
     _loadInitialData();
   }
 
@@ -56,56 +64,31 @@ class _CustomersScreenState extends State<CustomersScreen> {
 
   @override
   void dispose() {
+    _searchDebouncer.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Daftar Pelanggan'),
-        titleSpacing: 0,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppDimensions.space16),
-            child: Center(
-              child: InkWell(
-                onTap: () => CustomerFormSheet.show(context),
-                borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                  ),
-                  child: const Text(
-                    '+ Tambah',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.brandPrimary,
-        child: ValueListenableBuilder<List<CustomerModel>>(
+    final topPadding = MediaQuery.paddingOf(context).top;
+
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.brandPrimary,
+      backgroundColor: Colors.white,
+      edgeOffset: topPadding,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Daftar Pelanggan'),
+        ),
+      body: ValueListenableBuilder<List<CustomerModel>>(
           valueListenable: CustomersRepository.instance.customersNotifier,
           builder: (context, allCustomers, _) {
             final filtered = CustomersRepository.instance.searchCustomers(
               query: _searchQuery,
               filter: _activeFilter,
             );
-
-            final totalDebtors = allCustomers.where((c) => c.hasDebt).length;
 
             return CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -118,61 +101,31 @@ class _CustomersScreenState extends State<CustomersScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextField(
+                        AppSearchBar(
                           controller: _searchController,
-                          style: const TextStyle(fontSize: 14),
-                          onChanged: (val) =>
-                              setState(() => _searchQuery = val.trim()),
-                          decoration: InputDecoration(
-                            hintText: 'Cari nama pelanggan...',
-                            hintStyle: const TextStyle(
-                                fontSize: 14, color: AppColors.textMuted),
-                            prefixIcon: const Padding(
-                              padding: EdgeInsets.only(left: 12, right: 8),
-                              child: Icon(Icons.search,
-                                  size: 20, color: AppColors.textMuted),
-                            ),
-                            prefixIconConstraints: const BoxConstraints(
-                                minWidth: 40, minHeight: 40),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(Icons.clear,
-                                        size: 18, color: AppColors.textMuted),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = '');
-                                    },
-                                  )
-                                : null,
-                            isDense: true,
-                            fillColor: Colors.white,
-                          ),
+                          hintText: 'Cari nama pelanggan...',
+                          hasQuery: _searchQuery.isNotEmpty,
+                          onChanged: (val) {
+                            _searchDebouncer.run(() {
+                              if (mounted) {
+                                setState(() => _searchQuery = val.trim());
+                              }
+                            });
+                          },
+                          onClear: () {
+                            _searchDebouncer.cancel();
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
                         ),
                         const SizedBox(height: AppDimensions.space10),
 
-                        // Filter Chips & Counter
-                        Row(
-                          children: [
-                            Expanded(
-                              child: AppFilterChips<String>(
-                                options: const ['Semua', 'Ada Utang', 'Lunas'],
-                                selected: _activeFilter,
-                                onSelected: (filter) =>
-                                    setState(() => _activeFilter = filter),
-                              ),
-                            ),
-                            AppSkeletonizer(
-                              isLoading: _isLoading,
-                              child: Text(
-                                '$totalDebtors ada utang',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ),
-                          ],
+                        // Filter Chips
+                        AppFilterChips<String>(
+                          options: const ['Semua', 'Ada Utang', 'Paling Banyak Order'],
+                          selected: _activeFilter,
+                          onSelected: (filter) =>
+                              setState(() => _activeFilter = filter),
                         ),
                         const SizedBox(height: AppDimensions.space8),
                       ],
@@ -184,35 +137,17 @@ class _CustomersScreenState extends State<CustomersScreen> {
                 if (filtered.isEmpty && !_isLoading)
                   SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.person_outline,
-                            size: 40,
-                            color: AppColors.textMuted,
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Tidak ada pelanggan yang sesuai',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                          if (_searchQuery.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            TextButton(
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() => _searchQuery = '');
-                              },
-                              child: const Text('Reset pencarian'),
-                            ),
-                          ],
-                        ],
-                      ),
+                    child: AppEmptyState(
+                      message: _searchQuery.isEmpty
+                          ? 'Belum ada pelanggan'
+                          : 'Pelanggan tidak ditemukan',
+                      actionLabel: _searchQuery.isNotEmpty ? 'Reset pencarian' : null,
+                      onAction: _searchQuery.isNotEmpty
+                          ? () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            }
+                          : null,
                     ),
                   )
                 else
@@ -231,40 +166,60 @@ class _CustomersScreenState extends State<CustomersScreen> {
                             AppDimensions.space16,
                             96,
                           ),
-                          sliver: SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final customer = displayList[index];
+                          sliver: SliverToBoxAdapter(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(
+                                    AppDimensions.radiusCard),
+                                border: Border.all(
+                                    color: AppColors.border, width: 1.0),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Column(
+                                children: displayList.asMap().entries.map((entry) {
+                                  final index = entry.key;
+                                  final customer = entry.value;
+                                  final isRankMode =
+                                      _activeFilter == 'Paling Banyak Order';
+                                  final isDebtMode =
+                                      _activeFilter == 'Ada Utang';
+                                  final showDebt = customer.hasDebt;
+                                  final isLast = index == displayList.length - 1;
 
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: AppDimensions.space8),
-                                  child: FlatTransactionRow(
-                                    title: customer.name,
-                                    subtitle: customer.lastOrderDate != null
-                                        ? 'Kirim terakhir: ${AppFormatters.date(customer.lastOrderDate!)}'
-                                        : 'Belum ada riwayat kirim',
-                                    amount: customer.hasDebt
+                                  final subtitle = isDebtMode
+                                      ? '${customer.unpaidTransactionsCount} nota belum lunas'
+                                      : (customer.totalCylinders > 0
+                                          ? '${customer.totalCylinders} tabung'
+                                          : (customer.lastOrderDate != null
+                                              ? 'Order: ${AppFormatters.date(customer.lastOrderDate!)}'
+                                              : 'Belum ada riwayat order'));
+
+                                  return FlatTransactionRow(
+                                    leadingWidget:
+                                        isRankMode ? _buildRankBadge(index) : null,
+                                    title: customer.displayName,
+                                    subtitle: subtitle,
+                                    amount: showDebt
                                         ? AppFormatters.currency(
                                             customer.activeDebt)
-                                        : '',
-                                    amountColor: AppColors.dangerText,
-                                    statusLabel:
-                                        customer.hasDebt ? 'Ada Utang' : null,
-                                    statusType: customer.hasDebt
-                                        ? BadgeType.danger
-                                        : null,
-                                    icon: Icons.person_outline,
-                                    iconColor: AppColors.brandPrimary,
-                                    iconBg: AppColors.canvas,
+                                        : (customer.totalSpending > 0
+                                            ? AppFormatters.currency(
+                                                customer.totalSpending)
+                                            : ''),
+                                    amountColor: showDebt
+                                        ? AppColors.dangerText
+                                        : AppColors.brandPrimary,
+                                    statusLabel: showDebt ? 'Ada Utang' : null,
+                                    statusType: showDebt ? BadgeType.danger : null,
+                                    showDivider: !isLast,
                                     onTap: _isLoading
                                         ? null
                                         : () => CustomerDetailSheet.show(
                                             context, customer),
-                                  ),
-                                );
-                              },
-                              childCount: displayList.length,
+                                  );
+                                }).toList(),
+                              ),
                             ),
                           ),
                         );
@@ -279,5 +234,47 @@ class _CustomersScreenState extends State<CustomersScreen> {
     );
   }
 
+  Widget _buildRankBadge(int index) {
+    Color bg;
+    Color textColor;
+    Border? border;
 
+    switch (index) {
+      case 0:
+        bg = AppColors.brandPrimary;
+        textColor = Colors.white;
+        break;
+      case 1:
+        bg = const Color(0xFFE2E8F0);
+        textColor = AppColors.textPrimary;
+        break;
+      case 2:
+        bg = const Color(0xFFFEF3C7);
+        textColor = AppColors.textPrimary;
+        break;
+      default:
+        bg = AppColors.canvas;
+        textColor = AppColors.textMuted;
+        border = Border.all(color: AppColors.border, width: 1.0);
+    }
+
+    return Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: bg,
+        shape: BoxShape.circle,
+        border: border,
+      ),
+      child: Text(
+        '${index + 1}',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: textColor,
+        ),
+      ),
+    );
+  }
 }

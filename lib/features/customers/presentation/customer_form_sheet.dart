@@ -5,15 +5,17 @@ import '../domain/customer_model.dart';
 
 /// Modal bottom sheet for registering a new customer / partner store.
 class CustomerFormSheet extends StatefulWidget {
-  const CustomerFormSheet({super.key});
+  const CustomerFormSheet({super.key, this.onBack});
 
-  static Future<void> show(BuildContext context) {
+  final VoidCallback? onBack;
+
+  static Future<void> show(BuildContext context, {VoidCallback? onBack}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const CustomerFormSheet(),
+      builder: (ctx) => CustomerFormSheet(onBack: onBack),
     );
   }
 
@@ -84,6 +86,7 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
   Widget build(BuildContext context) {
     return AppBottomSheet(
       title: 'Tambah Pelanggan',
+      onBack: widget.onBack,
       bottomAction: AppButton(
         text: 'Simpan Pelanggan',
         isLoading: _isLoading,
@@ -93,13 +96,9 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Nama Pelanggan
-          const Text(
-            'Nama Pelanggan',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Nama Pelanggan',
+            isRequired: true,
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -112,13 +111,8 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           const SizedBox(height: AppDimensions.space12),
 
           // Nama Pemilik
-          const Text(
-            'Nama Pemilik (Opsional)',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Nama Pemilik (Opsional)',
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -131,13 +125,9 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           const SizedBox(height: AppDimensions.space12),
 
           // No WhatsApp / HP
-          const Text(
-            'Nomor WhatsApp / HP',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Nomor WhatsApp / HP',
+            isRequired: true,
           ),
           const SizedBox(height: 6),
           TextFormField(
@@ -150,22 +140,14 @@ class _CustomerFormSheetState extends State<CustomerFormSheet> {
           const SizedBox(height: AppDimensions.space12),
 
           // Alamat
-          const Text(
-            'Alamat Pelanggan',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textPrimary,
-            ),
+          const InputLabel(
+            label: 'Alamat Pelanggan',
           ),
           const SizedBox(height: 6),
           TextFormField(
             controller: _addressController,
             textCapitalization: TextCapitalization.sentences,
             maxLines: 2,
-            decoration: const InputDecoration(
-              hintText: 'Contoh: Jl. Melati No. 12 (depan masjid)',
-            ),
           ),
         ],
       ),

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../customers/data/customers_repository.dart';
+import '../../dashboard/data/dashboard_repository.dart';
+import '../../inventory/data/inventory_repository.dart';
+import '../../receivables/data/receivables_repository.dart';
+import '../../reports/data/reports_repository.dart';
 import '../domain/distribution_model.dart';
 
-/// Repository managing LPG distribution transactions via Supabase PostgreSQL.
+/// Repository managing LPG sales and distribution transactions via Supabase PostgreSQL.
 class DistributionRepository {
   DistributionRepository._() {
     fetchDistributions();
@@ -18,7 +23,10 @@ class DistributionRepository {
       final res = await client.from('distributions').select('''
         id, transaction_number, business_date, subtotal, discount, total, amount_paid, payment_status, notes, created_at,
         customers(id, name, phone, address),
-        distribution_items(quantity, unit_price, subtotal, products(id, name, variant))
+        distribution_items(
+          quantity, unit_price, subtotal,
+          products(id, name, variant, purchase_price)
+        )
       ''').order('business_date', ascending: false).order('created_at', ascending: false);
 
       final List<DistributionModel> mapped = [];
@@ -28,20 +36,46 @@ class DistributionRepository {
         final customer = d['customers'] as Map<String, dynamic>?;
         final customerName = customer?['name'] as String? ?? 'Pelanggan';
 
-        final items = (d['distribution_items'] as List<dynamic>?) ?? [];
+        final rawItems = (d['distribution_items'] as List<dynamic>?) ?? [];
         int totalQty = 0;
-        for (final item in items) {
+        int totalCost = 0;
+        final List<DistributionItemDetail> itemDetails = [];
+
+        for (final item in rawItems) {
           if (item is Map<String, dynamic>) {
-            totalQty += (item['quantity'] as num?)?.toInt() ?? 0;
+            final qty = (item['quantity'] as num?)?.toInt() ?? 0;
+            final unitPrice = (item['unit_price'] as num?)?.toInt() ?? 0;
+            final product = item['products'] as Map<String, dynamic>?;
+            final prodId = product?['id']?.toString() ?? '';
+            final prodName = product?['name']?.toString() ?? 'Tabung LPG';
+            final prodVariant = product?['variant']?.toString() ?? '';
+            final unitCost = (product?['purchase_price'] as num?)?.toInt() ?? 16000;
+
+            totalQty += qty;
+            totalCost += (qty * unitCost);
+
+            itemDetails.add(DistributionItemDetail(
+              productId: prodId,
+              productName: prodName,
+              variant: prodVariant,
+              quantity: qty,
+              unitPrice: unitPrice,
+              unitCost: unitCost,
+              subtotalSales: qty * unitPrice,
+              subtotalCost: qty * unitCost,
+            ));
           }
         }
 
-        final status = d['payment_status']?.toString() ?? 'unpaid';
         final date = DateTime.tryParse(d['business_date']?.toString() ?? '') ?? DateTime.now();
         final createdAt = DateTime.tryParse(d['created_at']?.toString() ?? '');
         final timeStr = createdAt != null
             ? '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} WIB'
             : '12:00 WIB';
+
+        final totalSales = (d['total'] as num?)?.toInt() ?? 0;
+        final amountPaid = (d['amount_paid'] as num?)?.toInt() ?? totalSales;
+        final paymentStatus = d['payment_status']?.toString() ?? 'paid';
 
         mapped.add(DistributionModel(
           id: d['id'] as String,
@@ -51,9 +85,12 @@ class DistributionRepository {
           qty: totalQty,
           date: date,
           time: timeStr,
-          amount: (d['total'] as num?)?.toInt() ?? 0,
-          amountPaid: (d['amount_paid'] as num?)?.toInt() ?? 0,
-          status: status,
+          amount: totalSales,
+          amountPaid: amountPaid,
+          status: paymentStatus,
+          totalCost: totalCost > 0 ? totalCost : (totalQty * 16000),
+          paymentMethod: 'Tunai',
+          items: itemDetails,
           notes: d['notes']?.toString() ?? '',
         ));
       }
@@ -70,6 +107,7 @@ class DistributionRepository {
     required String customerId,
     required List<Map<String, dynamic>> items, // product_id, quantity, unit_price
     required int amountPaid,
+    String paymentMethod = 'Tunai',
     String? notes,
   }) async {
     try {
@@ -104,7 +142,7 @@ class DistributionRepository {
 
       final distId = distRes['id'] as String;
 
-      // 2. Insert items
+      // 2. Insert items & stock movements out
       for (final it in items) {
         final qty = (it['quantity'] as num).toInt();
         final price = (it['unit_price'] as num).toInt();
@@ -116,7 +154,6 @@ class DistributionRepository {
           'subtotal': qty * price,
         });
 
-        // 3. Stock movement out
         await client.from('stock_movements').insert({
           'product_id': it['product_id'],
           'movement_type': 'out',
@@ -128,7 +165,7 @@ class DistributionRepository {
         });
       }
 
-      // 4. If unpaid / partial -> record receivable
+      // 3. Catat Piutang jika belum lunas / tempo
       if (amountPaid < total) {
         final remaining = total - amountPaid;
         await client.from('receivables').insert({
@@ -141,7 +178,8 @@ class DistributionRepository {
         });
       }
 
-      // 5. If amountPaid > 0 -> record cashflow
+      final totalQty = items.fold<int>(0, (sum, it) => sum + ((it['quantity'] as num?)?.toInt() ?? 0));
+      // 4. Catat pemasukan kas riil ke cashflow_entries jika ada pembayaran
       if (amountPaid > 0) {
         await client.from('cashflow_entries').insert({
           'direction': 'in',
@@ -150,14 +188,52 @@ class DistributionRepository {
           'source_id': distId,
           'business_date': today,
           'amount': amountPaid,
-          'method': 'cash',
-          'notes': 'Penjualan $txNumber',
+          'method': paymentMethod.toLowerCase(),
+          'notes': notes?.isNotEmpty == true
+              ? notes!
+              : 'Penjualan gas ($totalQty tabung)',
         });
       }
 
       await fetchDistributions();
     } catch (e) {
       debugPrint('Error creating distribution in Supabase: $e');
+      rethrow;
+    }
+  }
+
+  /// Cancels an existing distribution transaction, restoring stock movements,
+  /// removing associated cashflow entries and receivables.
+  Future<void> cancelDistribution(String distributionId) async {
+    try {
+      final client = Supabase.instance.client;
+
+      // 1. Delete associated cashflow entries
+      await client.from('cashflow_entries').delete().eq('source_id', distributionId);
+
+      // 2. Delete associated stock movements
+      await client.from('stock_movements').delete().eq('source_id', distributionId);
+
+      // 3. Delete associated receivables
+      await client.from('receivables').delete().eq('source_distribution_id', distributionId);
+
+      // 4. Delete associated items
+      await client.from('distribution_items').delete().eq('distribution_id', distributionId);
+
+      // 5. Delete distribution record
+      await client.from('distributions').delete().eq('id', distributionId);
+
+      await Future.wait([
+        fetchDistributions(),
+        InventoryRepository.instance.fetchInventory(),
+        ReportsRepository.instance.fetchLiveReport(),
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+        ReceivablesRepository.instance.fetchReceivables(),
+        CustomersRepository.instance.fetchCustomers(),
+      ]);
+    } catch (e) {
+      debugPrint('Error cancelling distribution in Supabase: $e');
       rethrow;
     }
   }

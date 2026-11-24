@@ -2,21 +2,29 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../../customers/data/customers_repository.dart';
 import '../../customers/domain/customer_model.dart';
+import '../../dashboard/data/dashboard_repository.dart';
 import '../../inventory/data/inventory_repository.dart';
+import '../../receivables/data/receivables_repository.dart';
 import '../../reports/data/reports_repository.dart';
 import '../data/distribution_repository.dart';
+import 'widgets/distribution_customer_selector.dart';
+import 'widgets/distribution_payment_section.dart';
+import 'widgets/distribution_quantity_stepper.dart';
+import 'widgets/distribution_summary_section.dart';
 
-/// Bottom sheet form for recording LPG 3kg sales / distribution to warung.
+/// Bottom sheet form for recording LPG sales with senior-friendly ergonomic controls.
 class DistributionFormSheet extends StatefulWidget {
-  const DistributionFormSheet({super.key});
+  const DistributionFormSheet({super.key, this.onBack});
 
-  static Future<void> show(BuildContext context) {
+  final VoidCallback? onBack;
+
+  static Future<void> show(BuildContext context, {VoidCallback? onBack}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const DistributionFormSheet(),
+      builder: (ctx) => DistributionFormSheet(onBack: onBack),
     );
   }
 
@@ -31,24 +39,28 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
   CustomerModel? _selectedCustomer;
   final _customerController = TextEditingController();
   final _qtyController = TextEditingController(text: '15');
+  final _paidAmountController = TextEditingController(text: '0');
+
   int get _unitPrice => InventoryRepository.instance.sellingPrice;
+  int get _availableStock => InventoryRepository.instance.stockSummaryNotifier.value.filled;
+
   bool _isPaid = true;
   bool _isLoading = false;
 
   int get _qty => AppInputFormatters.parseQuantity(_qtyController.text, min: 1, defaultValue: 0);
   int get _subtotal => _qty * _unitPrice;
+  int get _paidAmount => _isPaid ? _subtotal : AppInputFormatters.parseNumber(_paidAmountController.text, defaultValue: 0);
+  int get _remainingDebt => (_subtotal - _paidAmount).clamp(0, _subtotal);
 
   @override
   void initState() {
     super.initState();
     if (CustomersRepository.instance.customersNotifier.value.isEmpty) {
       CustomersRepository.instance.fetchCustomers().then((_) {
-        if (mounted) {
+        if (mounted && _selectedCustomer == null && _masterCustomers.isNotEmpty) {
           setState(() {
-            if (_selectedCustomer == null && _masterCustomers.isNotEmpty) {
-              _selectedCustomer = _masterCustomers.first;
-              _customerController.text = _selectedCustomer?.name ?? '';
-            }
+            _selectedCustomer = _masterCustomers.first;
+            _customerController.text = _selectedCustomer?.name ?? '';
           });
         }
       });
@@ -62,10 +74,11 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
   void dispose() {
     _customerController.dispose();
     _qtyController.dispose();
+    _paidAmountController.dispose();
     super.dispose();
   }
 
-  Future<CustomerModel> _createNewCustomer(String name, {bool silent = false}) async {
+  Future<CustomerModel> _createNewCustomer(String name) async {
     final clean = AppInputFormatters.trim(name);
     final newModel = CustomerModel(
       id: '',
@@ -100,9 +113,6 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
         _customerController.selection = TextSelection.collapsed(offset: clean.length);
       });
     }
-    if (!silent) {
-      AppToast.success(title: 'Pelanggan berhasil ditambahkan');
-    }
     return match!;
   }
 
@@ -126,7 +136,7 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
             orElse: () => null,
           );
 
-      customer ??= await _createNewCustomer(customerName, silent: true);
+      customer ??= await _createNewCustomer(customerName);
 
       await DistributionRepository.instance.createDistribution(
         customerId: customer.id,
@@ -137,42 +147,35 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
             'unit_price': _unitPrice,
           }
         ],
-        amountPaid: _isPaid ? _subtotal : 0,
-        notes: 'Pengiriman via GasHub Mobile',
+        amountPaid: _paidAmount,
+        notes: '',
       );
 
       await Future.wait([
         InventoryRepository.instance.fetchInventory(),
         ReportsRepository.instance.fetchLiveReport(),
+        DashboardRepository.instance.fetchDashboardMetrics(),
+        DashboardRepository.instance.fetchCashflowEntries(),
+        ReceivablesRepository.instance.fetchReceivables(),
+        CustomersRepository.instance.fetchCustomers(),
       ]);
 
       if (!mounted) return;
       Navigator.of(context, rootNavigator: true).pop();
-      AppToast.success(title: 'Data distribusi berhasil disimpan');
+      AppToast.success(title: 'Penjualan gas berhasil dicatat');
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        AppToast.error(title: 'Gagal menyimpan transaksi: $e');
+        AppToast.error(title: 'Gagal mencatat penjualan: $e');
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentQuery = _customerController.text.trim();
-    final cleanQuery = currentQuery.toLowerCase();
-    final isExactMatch = cleanQuery.isNotEmpty &&
-        _masterCustomers.any((c) => c.name.toLowerCase() == cleanQuery);
-
-    final filteredCustomers = cleanQuery.isEmpty
-        ? _masterCustomers.take(7).toList()
-        : _masterCustomers
-            .where((c) => c.name.toLowerCase().contains(cleanQuery))
-            .take(7)
-            .toList();
-
     return AppBottomSheet(
-      title: 'Catat Kirim Gas',
+      title: 'Catat Penjualan Gas',
+      onBack: widget.onBack,
       bottomAction: AppButton(
         text: 'Simpan Penjualan',
         isLoading: _isLoading,
@@ -181,240 +184,34 @@ class _DistributionFormSheetState extends State<DistributionFormSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Nama Pelanggan (Smart Lookup)
-          const Text(
-            'Nama Pelanggan',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space8),
-          TextFormField(
+          DistributionCustomerSelector(
             controller: _customerController,
-            inputFormatters: [AppInputFormatters.cleanText],
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: 'Ketik nama pelanggan...',
-              prefixIcon: const Icon(Icons.person_outline, size: 20, color: AppColors.textMuted),
-              suffixIcon: _customerController.text.isNotEmpty
-                  ? IconButton(
-                      icon: const Icon(Icons.clear, size: 16, color: AppColors.textMuted),
-                      onPressed: () {
-                        _customerController.clear();
-                        setState(() => _selectedCustomer = null);
-                      },
-                    )
-                  : null,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            ),
-            onChanged: (val) {
-              final clean = val.trim().toLowerCase();
-              final match = _masterCustomers.cast<CustomerModel?>().firstWhere(
-                (c) => c?.name.toLowerCase() == clean,
-                orElse: () => null,
-              );
-              setState(() => _selectedCustomer = match);
-            },
-          ),
-          const SizedBox(height: AppDimensions.space8),
-
-          // Pilihan Cepat & Filter Chips Reaktif (Maks 7 Chip)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                // Tombol aksi buat baru jika nama yang diketik belum ada di daftar
-                if (!isExactMatch && currentQuery.isNotEmpty) ...[
-                  GestureDetector(
-                    onTap: () => _createNewCustomer(currentQuery),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.canvas,
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-                        border: Border.all(color: AppColors.border),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.add, size: 14, color: AppColors.textPrimary),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Tambah "$currentQuery"',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                ],
-
-                // Matching chips (Bg abu-abu lembut & teks gelap saat aktif)
-                ...filteredCustomers.map((cust) {
-                  final isSelected = _selectedCustomer?.id == cust.id;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: GestureDetector(
-                      onTap: () {
-                        _customerController.text = cust.name;
-                        _customerController.selection = TextSelection.collapsed(
-                          offset: cust.name.length,
-                        );
-                        setState(() => _selectedCustomer = cust);
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isSelected ? AppColors.brandPrimary : AppColors.canvas,
-                          borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-                          border: Border.all(
-                            color: isSelected ? AppColors.brandPrimary : AppColors.border,
-                          ),
-                        ),
-                        child: Text(
-                          cust.name,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                            color: isSelected ? Colors.white : AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ],
-            ),
+            masterCustomers: _masterCustomers,
+            selectedCustomer: _selectedCustomer,
+            onSelectCustomer: (cust) => setState(() => _selectedCustomer = cust),
+            onCreateNewCustomer: _createNewCustomer,
           ),
           const SizedBox(height: AppDimensions.space16),
-
-          // 2. Jumlah Tabung (Input manual langsung full width)
-          const Text(
-            'Jumlah Tabung',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space8),
-          TextFormField(
+          DistributionQuantityStepper(
             controller: _qtyController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [AppInputFormatters.thousands],
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            decoration: InputDecoration(
-              hintText: '1',
-              prefixIcon: const Icon(Icons.propane_tank_outlined, size: 20, color: AppColors.textMuted),
-              suffixText: 'tabung',
-              suffixStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-              helperText: 'Harga: ${AppFormatters.currency(_unitPrice)} / tabung',
-              helperStyle: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-              isDense: true,
-            ),
-            onChanged: (_) => setState(() {}),
+            unitPrice: _unitPrice,
+            availableStock: _availableStock,
+            onChanged: () => setState(() {}),
           ),
           const SizedBox(height: AppDimensions.space16),
-
-          // 3. Status Pembayaran
-          const Text(
-            'Status Pembayaran',
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space8),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isPaid = true),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: _isPaid ? AppColors.brandPrimary : Colors.white,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-                      border: Border.all(
-                        color: _isPaid ? AppColors.brandPrimary : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      'Lunas',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: _isPaid ? FontWeight.w500 : FontWeight.w400,
-                        color: _isPaid ? Colors.white : AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppDimensions.space12),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _isPaid = false),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: !_isPaid ? AppColors.brandPrimary : Colors.white,
-                      borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-                      border: Border.all(
-                        color: !_isPaid ? AppColors.brandPrimary : AppColors.border,
-                      ),
-                    ),
-                    child: Text(
-                      'Belum Bayar',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: !_isPaid ? FontWeight.w500 : FontWeight.w400,
-                        color: !_isPaid ? Colors.white : AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          DistributionPaymentSection(
+            isPaid: _isPaid,
+            onPaidChanged: (val) => setState(() => _isPaid = val),
+            paidAmountController: _paidAmountController,
+            remainingDebt: _remainingDebt,
+            onAmountChanged: () => setState(() {}),
           ),
           const SizedBox(height: AppDimensions.space16),
-
-          // 4. Total Tagihan (Teks biasa tanpa banner / minicard)
-          const SizedBox(height: AppDimensions.space4),
-          const Divider(height: 1, thickness: 1, color: AppColors.border),
-          const SizedBox(height: AppDimensions.space12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              const Text(
-                'Total Tagihan',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              Text(
-                AppFormatters.currency(_subtotal),
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
+          DistributionSummarySection(
+            subtotal: _subtotal,
+            qty: _qty,
+            isPaid: _isPaid,
+            remainingDebt: _remainingDebt,
           ),
         ],
       ),

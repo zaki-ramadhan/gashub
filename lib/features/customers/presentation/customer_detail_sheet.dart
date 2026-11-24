@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../data/customers_repository.dart';
 import '../domain/customer_model.dart';
+import 'widgets/customer_detail_contact_info.dart';
+import 'widgets/customer_detail_summary_row.dart';
+import 'widgets/customer_order_item_row.dart';
 
-/// Modal bottom sheet showing warung profile, active debt, and distribution history.
+/// Modal bottom sheet showing customer profile, active debt, and order history.
 class CustomerDetailSheet extends StatefulWidget {
   const CustomerDetailSheet({super.key, required this.customer});
 
@@ -33,7 +36,7 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
     super.initState();
     _customer = widget.customer;
     _paginationController = PagedListController<CustomerTransaction>(
-      pageSize: 3,
+      pageSize: 5,
       initialItems: _customer.transactions,
     );
     _paginationController.addListener(_onPaginationUpdated);
@@ -58,14 +61,30 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
     try {
       await CustomersRepository.instance.payDebt(_customer.id, debt);
       if (mounted) {
+        // Mark all transactions as paid locally so UI updates synchronously
+        final updatedTxs = _customer.transactions.map((tx) {
+          if (tx.isUnpaid) {
+            return tx.copyWith(
+              paidAmount: tx.totalAmount,
+              statusLabel: 'Lunas',
+              statusType: BadgeType.success,
+            );
+          }
+          return tx;
+        }).toList();
+
         setState(() {
-          _customer = _customer.copyWith(activeDebt: 0);
-          _paginationController.setSource(_customer.transactions);
+          _customer = _customer.copyWith(
+            activeDebt: 0,
+            transactions: updatedTxs,
+          );
+          _paginationController.setSource(updatedTxs);
           _isLoading = false;
         });
+
         AppToast.success(
           title: 'Pelunasan berhasil dicatat',
-          description: 'Utang ${_customer.name} kini lunas',
+          description: 'Seluruh utang ${_customer.name} kini telah lunas',
         );
       }
     } catch (e) {
@@ -74,13 +93,6 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
         AppToast.error(title: 'Gagal mencatat pelunasan: $e');
       }
     }
-  }
-
-  void _handleCallWA() {
-    AppToast.info(
-      title: 'Menghubungi ${_customer.name}',
-      description: 'Nomor: ${_customer.phone}',
-    );
   }
 
   @override
@@ -96,315 +108,56 @@ class _CustomerDetailSheetState extends State<CustomerDetailSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            // 1. Info Kontak & Alamat
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.space12,
-              vertical: AppDimensions.space12,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.canvas,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-              border: Border.all(color: AppColors.border, width: 1.0),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_customer.owner.isNotEmpty) ...[
-                  Text(
-                    'Pemilik: ${_customer.owner}',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.textPrimary,
-                    ),
+              // 1. Raw-text Contact & Address Details
+              CustomerDetailContactInfo(customer: _customer),
+              const SizedBox(height: AppDimensions.space12),
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              const SizedBox(height: AppDimensions.space12),
+
+              // 2. Clean Flat Summary Row (Sisa Utang & Total Tabung)
+              CustomerDetailSummaryRow(
+                customer: _customer,
+                onPayDebt: _handlePayDebt,
+              ),
+              const SizedBox(height: AppDimensions.space12),
+              const Divider(height: 1, thickness: 1, color: AppColors.border),
+              const SizedBox(height: AppDimensions.space16),
+
+              // 3. Riwayat Nota
+              const Text(
+                'Riwayat Nota',
+                style: TextStyle(
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: AppDimensions.space6),
+
+              if (_paginationController.totalCount == 0)
+                const AppEmptyState(message: 'Belum ada riwayat belanja')
+              else ...[
+                ..._paginationController.visibleItems.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final tx = entry.value;
+                  final isLast = idx == _paginationController.visibleItems.length - 1;
+                  return CustomerOrderItemRow(
+                    transaction: tx,
+                    showDivider: !isLast,
+                  );
+                }),
+                if (!_isLoading)
+                  PaginationLoadingIndicator(
+                    isLoadingMore: _paginationController.isLoadingMore,
+                    hasMore: _paginationController.hasMore,
+                    totalItems: _paginationController.totalCount,
+                    loadingMessage: 'Memuat riwayat nota...',
                   ),
-                  const SizedBox(height: 4),
-                ],
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 15,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        _customer.address,
-                        style: const TextStyle(
-                          fontSize: 12.5,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.phone_outlined,
-                      size: 15,
-                      color: AppColors.textMuted,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _customer.phone,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    const Spacer(),
-                    Skeleton.ignore(
-                      child: InkWell(
-                        onTap: _handleCallWA,
-                        borderRadius: BorderRadius.circular(6),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: AppColors.brandPrimary,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.chat_outlined, size: 13, color: Colors.white),
-                              SizedBox(width: 4),
-                              Text(
-                                'WhatsApp',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ],
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space12),
-
-          // 2. Ringkasan Status Tabung & Utang
-          Row(
-            children: [
-              // Kartu Utang
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                    border: Border.all(
-                      color: _customer.hasDebt ? AppColors.dangerText.withValues(alpha: 0.3) : AppColors.border,
-                      width: 1.0,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Sisa Utang',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _customer.hasDebt
-                            ? AppFormatters.currency(_customer.activeDebt)
-                            : 'Lunas',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: _customer.hasDebt
-                              ? AppColors.dangerText
-                              : AppColors.successText,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (_customer.hasDebt) ...[
-                        const SizedBox(height: 6),
-                        Skeleton.ignore(
-                          child: InkWell(
-                            onTap: _handlePayDebt,
-                            child: Container(
-                              alignment: Alignment.center,
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppColors.successBg,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Text(
-                                'Bayar Lunas',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.successText,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppDimensions.space8),
-
-              // Kartu Pengambilan Tabung
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                    border: Border.all(color: AppColors.border, width: 1.0),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Total Tabung',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${_customer.totalCylinders} tabung',
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _customer.lastOrderDate != null
-                            ? 'Kirim: ${AppFormatters.date(_customer.lastOrderDate!)}'
-                            : 'Belum ada transaksi',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
-          const SizedBox(height: AppDimensions.space16),
-
-          // 3. Riwayat Transaksi Khusus Warung Ini
-          const Text(
-            'Riwayat Pengiriman',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: AppDimensions.space8),
-
-          if (_paginationController.totalCount == 0)
-            Container(
-              padding: const EdgeInsets.all(AppDimensions.space16),
-              alignment: Alignment.center,
-              child: const Text(
-                'Belum ada riwayat transaksi pengiriman',
-                style: TextStyle(fontSize: 12.5, color: AppColors.textMuted),
-              ),
-            )
-          else ...[
-            ..._paginationController.visibleItems.map((tx) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: AppDimensions.space8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusControl),
-                  border: Border.all(color: AppColors.border, width: 0.8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${tx.invoice} | ${AppFormatters.date(tx.date)}',
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            tx.items,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          AppFormatters.currency(tx.totalAmount),
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        StatusBadge(
-                          label: tx.statusLabel,
-                          type: tx.statusType,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              );
-            }),
-            if (!_isLoading)
-              PaginationLoadingIndicator(
-                isLoadingMore: _paginationController.isLoadingMore,
-                hasMore: _paginationController.hasMore,
-                totalItems: _paginationController.totalCount,
-                loadingMessage: 'Memuat riwayat pengiriman...',
-                endMessage: 'Semua riwayat telah ditampilkan',
-              ),
-          ],
-        ],
+        ),
       ),
-    ),
-  ),
-);
-}
+    );
+  }
 }

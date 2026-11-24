@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../../../core/core.dart';
 import '../data/distribution_repository.dart';
 import '../domain/distribution_model.dart';
-import 'distribution_form_sheet.dart';
+import 'widgets/distribution_day_group_card.dart';
+import 'widgets/distribution_filter_header.dart';
 import 'widgets/distribution_settlement_card.dart';
 
 class DistributionScreen extends StatefulWidget {
@@ -23,12 +24,11 @@ class DistributionScreen extends StatefulWidget {
 
 class _DistributionScreenState extends State<DistributionScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final AppDebouncer _searchDebouncer = AppDebouncer(duration: const Duration(milliseconds: 300));
   String _activeFilter = 'Semua';
   String _searchQuery = '';
   final PagedListController<DistributionModel> _paginationController =
-      PagedListController<DistributionModel>(
-    pageSize: 4,
-  );
+      PagedListController<DistributionModel>(pageSize: 8);
   bool _isLoading = false;
 
   @override
@@ -73,186 +73,132 @@ class _DistributionScreenState extends State<DistributionScreen> {
     DistributionRepository.instance.distributionsNotifier.removeListener(_onRepoUpdated);
     _paginationController.removeListener(_onPaginationUpdated);
     _paginationController.dispose();
+    _searchDebouncer.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
   List<DistributionModel> _getFilteredTransactions() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+
     return DistributionScreen.liveDistributions.where((tx) {
-      if (_activeFilter == 'Lunas' && !tx.isPaid) {
-        return false;
-      }
-      if (_activeFilter == 'Belum Bayar' && tx.isPaid) {
-        return false;
+      if (_activeFilter == 'Hari Ini') {
+        final d = tx.date;
+        if (d.year != today.year || d.month != today.month || d.day != today.day) {
+          return false;
+        }
+      } else if (_activeFilter == 'Minggu Ini') {
+        if (tx.date.isBefore(startOfWeek)) return false;
+      } else if (_activeFilter == 'Bulan Ini') {
+        if (tx.date.year != now.year || tx.date.month != now.month) return false;
       }
 
       if (_searchQuery.isNotEmpty) {
         final query = _searchQuery.toLowerCase();
         final title = tx.customerName.toLowerCase();
         final items = tx.itemsLabel.toLowerCase();
-        if (!title.contains(query) && !items.contains(query)) {
-          return false;
-        }
+        if (!title.contains(query) && !items.contains(query)) return false;
       }
       return true;
     }).toList();
   }
 
   void _syncFilteredData() {
-    final filtered = _getFilteredTransactions();
-    _paginationController.setSource(filtered);
+    _paginationController.setSource(_getFilteredTransactions());
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. Settlement metrics for today (purely from live Supabase records)
-    final rawTodayTxs = DistributionScreen.liveDistributions.where((tx) {
+    final todayTxs = DistributionScreen.liveDistributions.where((tx) {
       final d = tx.date;
       return d.year == DistributionScreen._today.year &&
           d.month == DistributionScreen._today.month &&
           d.day == DistributionScreen._today.day;
     }).toList();
-    final todayTxs = rawTodayTxs;
 
     final todayTotalQty = todayTxs.fold<int>(0, (sum, tx) => sum + tx.qty);
-    final todayPaid = todayTxs
-        .where((tx) => tx.isPaid)
-        .fold<int>(0, (sum, tx) => sum + tx.amount);
-    final todayDebt = todayTxs
-        .where((tx) => !tx.isPaid)
-        .fold<int>(0, (sum, tx) => sum + tx.amount);
-    final todayMargin = todayTotalQty * 3000;
+    final todayTotalSales = todayTxs.fold<int>(0, (sum, tx) => sum + tx.amount);
+    final todayTotalCost = todayTxs.fold<int>(0, (sum, tx) => sum + tx.totalCost);
+    final todayNetMargin = todayTotalSales - todayTotalCost;
 
-    // 3. Group visible items by date for pagination chunking
     final visibleTxs = (_isLoading && _paginationController.visibleItems.isEmpty)
         ? DistributionScreen._skeletonDistributions
         : _paginationController.visibleItems;
-    final grouped = groupItemsByDate<DistributionModel>(
-      visibleTxs,
-      (tx) => tx.date,
-    );
+    final grouped = groupItemsByDate<DistributionModel>(visibleTxs, (tx) => tx.date);
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final topPadding = MediaQuery.paddingOf(context).top;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Distribusi Gas'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: AppDimensions.space16),
-            child: ElevatedButton.icon(
-              onPressed: () => DistributionFormSheet.show(context),
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Catat Baru'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.brandPrimary,
-                foregroundColor: Colors.white,
-                minimumSize: const Size(0, 32),
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _handleRefresh,
-        color: AppColors.brandPrimary,
-        child: InfiniteScrollListener(
+    return RefreshIndicator(
+      onRefresh: _handleRefresh,
+      color: AppColors.brandPrimary,
+      backgroundColor: Colors.white,
+      edgeOffset: topPadding,
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Penjualan Gas')),
+        body: InfiniteScrollListener(
           onLoadMore: _paginationController.loadMore,
           isLoadingMore: _paginationController.isLoadingMore,
           hasMore: _paginationController.hasMore,
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              // 1. Rekapitulasi Distribusi Hari Ini
               SliverToBoxAdapter(
                 child: DistributionSettlementCard(
                   totalQty: todayTotalQty,
-                  paidAmount: todayPaid,
-                  debtAmount: todayDebt,
-                  marginAmount: todayMargin,
+                  totalSales: todayTotalSales,
+                  totalCost: todayTotalCost,
+                  netMargin: todayNetMargin,
                   isLoading: _isLoading,
                 ),
               ),
-
-              // 2. Filter Bar & Search
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: AppDimensions.space16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      TextField(
-                        controller: _searchController,
-                        style: const TextStyle(fontSize: 14),
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val.trim();
-                            _syncFilteredData();
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Cari nama pelanggan...',
-                          hintStyle: const TextStyle(
-                              fontSize: 14, color: AppColors.textMuted),
-                          prefixIcon: const Padding(
-                            padding: EdgeInsets.only(left: 12, right: 8),
-                            child: Icon(Icons.search,
-                                size: 20, color: AppColors.textMuted),
-                          ),
-                          prefixIconConstraints:
-                              const BoxConstraints(minWidth: 40, minHeight: 40),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear,
-                                      size: 18, color: AppColors.textMuted),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _syncFilteredData();
-                                    });
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                          fillColor: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: AppDimensions.space10),
-                      AppFilterChips<String>(
-                        options: const ['Semua', 'Lunas', 'Belum Bayar'],
-                        selected: _activeFilter,
-                        onSelected: (filter) {
-                          setState(() {
-                            _activeFilter = filter;
-                            _syncFilteredData();
-                          });
-                        },
-                      ),
-                      const SizedBox(height: AppDimensions.space8),
-                    ],
-                  ),
+                child: DistributionFilterHeader(
+                  searchController: _searchController,
+                  hasQuery: _searchQuery.isNotEmpty,
+                  activeFilter: _activeFilter,
+                  onSearchChanged: (val) {
+                    _searchDebouncer.run(() {
+                      if (mounted) {
+                        setState(() {
+                          _searchQuery = val.trim();
+                          _syncFilteredData();
+                        });
+                      }
+                    });
+                  },
+                  onSearchClear: () {
+                    _searchDebouncer.cancel();
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                      _syncFilteredData();
+                    });
+                  },
+                  onFilterSelected: (filter) {
+                    setState(() {
+                      _activeFilter = filter;
+                      _syncFilteredData();
+                    });
+                  },
                 ),
               ),
-
-              // 3. Daftar Transaksi Terkelompok Berdasarkan Tanggal (Chunk Paginated)
               if (_paginationController.totalCount == 0 && !_isLoading)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
-                  child: Padding(
-                    padding: EdgeInsets.all(AppDimensions.space24),
-                    child: Center(
-                      child: Text(
-                        'Tidak ada data distribusi yang cocok dengan pencarian / filter.',
-                        textAlign: TextAlign.center,
-                        style:
-                            TextStyle(fontSize: 13, color: AppColors.textMuted),
-                      ),
-                    ),
+                  child: AppEmptyState(
+                    message: _activeFilter == 'Semua' && _searchQuery.isEmpty
+                        ? 'Belum ada penjualan'
+                        : 'Penjualan tidak ditemukan',
+                    actionLabel: _searchQuery.isNotEmpty ? 'Reset pencarian' : null,
+                    onAction: _searchQuery.isNotEmpty
+                        ? () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                            _syncFilteredData();
+                          }
+                        : null,
                   ),
                 )
               else
@@ -271,53 +217,18 @@ class _DistributionScreenState extends State<DistributionScreen> {
                           if (index == sortedDates.length) {
                             if (_isLoading) return const SizedBox.shrink();
                             return PaginationLoadingIndicator(
-                              isLoadingMore:
-                                  _paginationController.isLoadingMore,
+                              isLoadingMore: _paginationController.isLoadingMore,
                               hasMore: _paginationController.hasMore,
                               totalItems: _paginationController.totalCount,
-                              loadingMessage:
-                                  'Memuat data distribusi lainnya...',
-                              endMessage:
-                                  'Semua data distribusi telah ditampilkan',
+                              loadingMessage: 'Memuat data penjualan lainnya...',
                             );
                           }
                           final dateKey = sortedDates[index];
                           final itemsForDay = grouped[dateKey]!;
-                          final dayQty = itemsForDay.fold<int>(
-                              0, (sum, tx) => sum + tx.qty);
-                          final dayAmount = itemsForDay.fold<int>(
-                              0, (sum, tx) => sum + tx.amount);
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              DateSectionHeader(
-                                title:
-                                    AppFormatters.relativeDateHeader(dateKey),
-                                trailingText:
-                                    '$dayQty tabung | ${AppFormatters.currency(dayAmount)}',
-                                topPadding: index == 0
-                                    ? AppDimensions.space4
-                                    : AppDimensions.space16,
-                              ),
-                              ...itemsForDay.map((item) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                      bottom: AppDimensions.space8),
-                                  child: FlatTransactionRow(
-                                    title: item.customerName,
-                                    subtitle: item.itemsLabel,
-                                    amount: AppFormatters.currency(item.amount),
-                                    statusLabel: item.statusLabel,
-                                    statusType: item.statusType,
-                                    time: item.time,
-                                    icon: Icons.person_outline,
-                                    iconColor: AppColors.brandPrimary,
-                                    iconBg: AppColors.canvas,
-                                  ),
-                                );
-                              }),
-                            ],
+                          return DistributionDayGroupCard(
+                            dateKey: dateKey,
+                            items: itemsForDay,
+                            isFirst: index == 0,
                           );
                         },
                         childCount: sortedDates.length + 1,
@@ -329,8 +240,6 @@ class _DistributionScreenState extends State<DistributionScreen> {
           ),
         ),
       ),
-  );
+    );
   }
-
-
 }

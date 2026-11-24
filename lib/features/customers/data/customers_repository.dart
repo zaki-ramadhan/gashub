@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/core.dart';
 import '../domain/customer_model.dart';
 
 /// Repository managing partner store directory & per-customer ledger via Supabase PostgreSQL.
@@ -43,7 +44,7 @@ class CustomersRepository {
     required String filter,
   }) {
     final cleanQuery = query.toLowerCase().trim();
-    return customersNotifier.value.where((customer) {
+    final list = customersNotifier.value.where((customer) {
       final matchesQuery = cleanQuery.isEmpty ||
           customer.name.toLowerCase().contains(cleanQuery) ||
           customer.owner.toLowerCase().contains(cleanQuery) ||
@@ -54,11 +55,23 @@ class CustomersRepository {
 
       if (filter == 'Ada Utang') {
         return customer.hasDebt;
-      } else if (filter == 'Lunas') {
-        return !customer.hasDebt;
       }
       return true;
     }).toList();
+
+    if (filter == 'Ada Utang') {
+      list.sort((a, b) => b.activeDebt.compareTo(a.activeDebt));
+    } else if (filter == 'Paling Banyak Order') {
+      list.sort((a, b) {
+        final cmp = b.totalCylinders.compareTo(a.totalCylinders);
+        if (cmp != 0) return cmp;
+        return b.totalSpending.compareTo(a.totalSpending);
+      });
+    } else {
+      list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    }
+
+    return list;
   }
 
   Future<void> addCustomer(CustomerModel newCustomer) async {
@@ -106,6 +119,12 @@ class CustomersRepository {
           'status': newStatus,
         }).eq('id', recId);
 
+        if (newRemaining == 0) {
+          await client.from('distributions').update({
+            'payment_status': 'paid',
+          }).eq('customer_id', customerId);
+        }
+
         final today = DateTime.now().toIso8601String().split('T')[0];
         await client.from('cashflow_entries').insert({
           'direction': 'in',
@@ -126,7 +145,20 @@ class CustomersRepository {
       if (idx != -1) {
         final current = list[idx];
         final newDebt = (current.activeDebt - paidAmount).clamp(0, double.infinity).toInt();
-        list[idx] = current.copyWith(activeDebt: newDebt);
+        final updatedTxs = current.transactions.map((tx) {
+          if (tx.isUnpaid) {
+            return tx.copyWith(
+              paidAmount: tx.totalAmount,
+              statusLabel: 'Lunas',
+              statusType: BadgeType.success,
+            );
+          }
+          return tx;
+        }).toList();
+        list[idx] = current.copyWith(
+          activeDebt: newDebt,
+          transactions: updatedTxs,
+        );
         customersNotifier.value = list;
       }
     }
